@@ -802,7 +802,7 @@ function App(){
       setHopTo(null);
       setTodayDone(n=>Math.min(30, n+1));
       pickNext(current.id);
-    }, 550);
+    }, 220);
   };
 
   const fachCounts = useMemo(()=>{
@@ -1021,8 +1021,11 @@ function CardBack({ word, example, frontWord, fach, hopTo, result, langLabel, on
     drag.current.active = false;
     drag.current.axis = null;
     const threshold = 88;
-    if (x >  threshold) { setDx(380); setTimeout(()=>{ setDx(0); onSwipeRight?.(); }, 180); return; }
-    if (x < -threshold) { setDx(-380); setTimeout(()=>{ setDx(0); onSwipeLeft?.();  }, 180); return; }
+    // Fling card fully off-screen and immediately trigger the answer.
+    // No reset — component unmounts when parent swaps the card, so the old
+    // view never snaps back through center.
+    if (x >  threshold) { setDx(520); onSwipeRight?.(); return; }
+    if (x < -threshold) { setDx(-520); onSwipeLeft?.();  return; }
     setDx(0);
   };
 
@@ -1033,10 +1036,12 @@ function CardBack({ word, example, frontWord, fach, hopTo, result, langLabel, on
     : dx < -12 ? 'var(--accent)'
     : 'var(--border-visible)';
   const transforming = dx !== 0;
+  const flinging = Math.abs(dx) >= 500;
   const swipeStyle = {
-    transform: transforming ? `translateX(${dx}px) rotate(${dx*0.04}deg)` : 'none',
-    transition: drag.current.active ? 'none' : 'transform .25s cubic-bezier(.25,.1,.25,1)',
+    transform: transforming ? `translateX(${dx}px) rotate(${Math.max(-14, Math.min(14, dx*0.04))}deg)` : 'none',
+    transition: drag.current.active ? 'none' : (flinging ? 'transform .22s cubic-bezier(.2,.6,.2,1)' : 'transform .2s cubic-bezier(.25,.1,.25,1)'),
     touchAction: 'pan-y',
+    opacity: flinging ? 0 : 1,
   };
 
   return (
