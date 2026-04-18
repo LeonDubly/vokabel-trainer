@@ -145,15 +145,10 @@ const SAMPLE = [
   { id:'w21', unit:'u5', es:'verde',       de:'grün',          ex:'Las hojas son verdes.' },
   { id:'w22', unit:'u5', es:'amarillo',    de:'gelb',          ex:'El sol es amarillo.' },
 ];
-const INITIAL_FACH = {
-  w1:3,w2:2,w3:1,w4:4,w5:2, w6:2,w7:3,w8:1,w9:1,
-  w10:1,w11:2,w12:3,w13:1,w14:2, w15:2,w16:1,w17:1,w18:1,
-  w19:3,w20:2,w21:2,w22:1,
-};
 function buildCards(){
   const out={};
   for(const v of SAMPLE){
-    out[v.id]={ ...v, fach:INITIAL_FACH[v.id]??1, seen:Math.floor(Math.random()*8)+2, correct:Math.floor(Math.random()*6)+1 };
+    out[v.id]={ ...v, fach:1, seen:0, correct:0 };
   }
   return out;
 }
@@ -284,8 +279,8 @@ function App(){
   const [flipped, setFlipped] = useState(false);
   const [result, setResult] = useState(null);
   const [hopTo, setHopTo] = useState(null);
-  const [todayDone, setTodayDone] = useState(14);
-  const [streak] = useState(7);
+  const [todayDone, setTodayDone] = useState(0);
+  const [streak] = useState(0);
   const [mode, setMode] = useState('dark');
   const [hotkey, setHotkey] = useState('doto');
   const [showExample, setShowExample] = useState(true);
@@ -779,6 +774,42 @@ function ToggleRow({ label, value, set, last }){
 }
 
 /* ================== TAB BAR ================== */
+function TabIcon({ id, active }){
+  const s = active ? 'var(--text-display)' : 'var(--text-disabled)';
+  const sw = 1.6;
+  switch(id){
+    case 'learn': return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="5" y="7" width="11" height="13" rx="1" stroke={s} strokeWidth={sw}/>
+        <rect x="8" y="4" width="11" height="13" rx="1" stroke={s} strokeWidth={sw}/>
+      </svg>
+    );
+    case 'library': return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="4"  y="4" width="3.5" height="16" stroke={s} strokeWidth={sw}/>
+        <rect x="10" y="4" width="3.5" height="16" stroke={s} strokeWidth={sw}/>
+        <rect x="16" y="4" width="3.5" height="16" stroke={s} strokeWidth={sw}/>
+      </svg>
+    );
+    case 'stats': return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="4"  y="14" width="3" height="6"  stroke={s} strokeWidth={sw}/>
+        <rect x="10.5" y="9" width="3" height="11" stroke={s} strokeWidth={sw}/>
+        <rect x="17" y="5" width="3" height="15" stroke={s} strokeWidth={sw}/>
+      </svg>
+    );
+    case 'settings': return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <line x1="4" y1="7"  x2="20" y2="7"  stroke={s} strokeWidth={sw}/>
+        <circle cx="9"  cy="7" r="2.4" fill={active?'var(--text-display)':'#000'} stroke={s} strokeWidth={sw}/>
+        <line x1="4" y1="17" x2="20" y2="17" stroke={s} strokeWidth={sw}/>
+        <circle cx="15" cy="17" r="2.4" fill={active?'var(--text-display)':'#000'} stroke={s} strokeWidth={sw}/>
+      </svg>
+    );
+  }
+  return null;
+}
+
 function TabBar({ tab, setTab, dueToday, dark, isMobile }){
   const tabs = [
     ['learn', 'LEARN'],
@@ -786,29 +817,41 @@ function TabBar({ tab, setTab, dueToday, dark, isMobile }){
     ['stats','STATS'],
     ['settings','SETTINGS'],
   ];
-  const bottomPad = isMobile ? 'max(env(safe-area-inset-bottom), 14px)' : 26;
+  const bottomPad = isMobile ? 'max(env(safe-area-inset-bottom), 10px)' : 20;
   return (
     <div className="relative" style={{
-      background: dark?'rgba(0,0,0,.85)':'rgba(245,245,245,.9)',
-      backdropFilter:'blur(12px)',
-      WebkitBackdropFilter:'blur(12px)',
+      background: dark?'rgba(0,0,0,.92)':'rgba(245,245,245,.95)',
+      backdropFilter:'blur(20px) saturate(1.4)',
+      WebkitBackdropFilter:'blur(20px) saturate(1.4)',
       borderTop:'1px solid var(--border)',
       paddingBottom:bottomPad,
+      paddingTop:8,
     }}>
       <div className="flex">
         {tabs.map(([id,lbl])=>{
           const active = tab===id;
           return (
-            <div key={id} onClick={()=>setTab(id)} className="tab-bar-item relative">
+            <button key={id} onClick={()=>setTab(id)}
+              className="relative"
+              style={{
+                flex:1, display:'flex', flexDirection:'column', alignItems:'center',
+                gap:5, padding:'8px 0 4px',
+                background:'transparent', border:'none', cursor:'pointer',
+                color: active ? 'var(--text-display)' : 'var(--text-disabled)',
+                transition:'color .18s ease',
+              }}>
+              <div className="relative" style={{height:24}}>
+                <TabIcon id={id} active={active}/>
+                {id==='learn' && dueToday>0 && !active && (
+                  <span className="absolute red-dot" style={{width:7,height:7, top:-1, right:-4}}/>
+                )}
+              </div>
               <span className="label" style={{
-                color: active?'var(--text-display)':'var(--text-disabled)',
+                color:'inherit',
                 fontSize:9, letterSpacing:'.14em',
+                transition:'color .18s ease',
               }}>{lbl}</span>
-              {active && <span className="absolute" style={{bottom: isMobile?'calc(max(env(safe-area-inset-bottom), 14px) + 4px)':'16px', width:14, height:2, background:'var(--text-display)'}}/>}
-              {id==='learn' && dueToday>0 && !active && (
-                <span className="absolute top-[7px] right-1/2 translate-x-[18px] red-dot" style={{width:6,height:6}}/>
-              )}
-            </div>
+            </button>
           );
         })}
       </div>
