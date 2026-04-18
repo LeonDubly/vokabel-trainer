@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#000000"/>
+<title>Vokabeln — Nothing Edition</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@400;600;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#000; --surface:#0C0C0C; --surface-raised:#161616;
+    --border:#1D1D1D; --border-visible:#2A2A2A;
+    --text-disabled:#555; --text-secondary:#8A8A8A; --text-primary:#E8E8E8; --text-display:#fff;
+    --accent:#D71921;
+    --accent-subtle:rgba(215,25,33,.15);
+    --success:#4A9E5C; --warning:#D4A843;
+  }
+  html,body{ background:#000; margin:0; padding:0; height:100%; overscroll-behavior:none; }
+  body{ font-family:"Space Grotesk", system-ui, sans-serif; color:var(--text-primary); -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent; }
+  @media (min-width: 768px){ html,body{ background:#1a1a1a; } }
+  .font-display{ font-family:"Doto","Space Mono",monospace; font-variation-settings:"ROND" 100; letter-spacing:-.02em; }
+  .font-mono{ font-family:"Space Mono", monospace; }
+  .font-grotesk{ font-family:"Space Grotesk", system-ui, sans-serif; }
+  .label{ font-family:"Space Mono",monospace; text-transform:uppercase; letter-spacing:.08em; font-size:11px; color:var(--text-secondary); }
+  .dot-grid{
+    background-image:radial-gradient(circle, rgba(255,255,255,.08) 1px, transparent 1px);
+    background-size:16px 16px;
+  }
+  .dot-grid-fine{
+    background-image:radial-gradient(circle, rgba(255,255,255,.04) .7px, transparent .7px);
+    background-size:8px 8px;
+  }
+  .seg{ height:10px; border-radius:0; }
+  .seg.full{ background:var(--text-display); }
+  .seg.accent{ background:var(--accent); }
+  .seg.success{ background:var(--success); }
+  .seg.warn{ background:var(--warning); }
+  .seg.empty{ background:var(--border-visible); }
+
+  .btn{
+    font-family:"Space Mono",monospace; text-transform:uppercase; letter-spacing:.08em;
+    font-size:13px; padding:14px 20px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    min-height:48px; transition: all .15s cubic-bezier(.25,.1,.25,1);
+    cursor:pointer; user-select:none; border:none;
+  }
+  .btn-primary{ background:var(--text-display); color:#000; }
+  .btn-primary:active{ transform:scale(.98); background:#e0e0e0; }
+  .btn-secondary{ background:transparent; color:var(--text-primary); border:1px solid var(--border-visible); }
+  .btn-secondary:active{ transform:scale(.98); border-color:var(--text-primary); }
+  .btn-destructive{ background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  .btn-destructive:active{ background:var(--accent-subtle); transform:scale(.98); }
+  .btn-ghost{ background:transparent; color:var(--text-secondary); border:none; padding:8px 12px; }
+
+  .fade-in{ animation: nfIn .25s cubic-bezier(.25,.1,.25,1) both; }
+  @keyframes nfIn { from { opacity:0; } to { opacity:1; } }
+  .card-swap{ animation: cswap .35s cubic-bezier(.25,.1,.25,1) both; }
+  @keyframes cswap { 0%{ opacity:0; transform:translateY(8px); } 100%{ opacity:1; transform:none; } }
+
+  .tab-bar-item{ flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0 8px; cursor:pointer; }
+  .tab-bar-item .label{ font-size:9px; letter-spacing:.12em; }
+
+  .red-dot{ width:8px; height:8px; border-radius:50%; background:var(--accent); display:inline-block; box-shadow:0 0 8px rgba(215,25,33,.6); }
+
+  .fach-slot{
+    border:1px solid var(--border-visible); padding:14px 12px 12px;
+    display:flex; flex-direction:column; gap:8px;
+    background:var(--surface);
+  }
+  .fach-slot.current{ border-color:var(--text-display); background:#0f0f0f; }
+  .fach-slot.mastered{ border-color:var(--success); }
+
+  .phone-scroll::-webkit-scrollbar{ display:none; }
+  .phone-scroll{ scrollbar-width:none; }
+
+  .scan-lines{
+    background-image: linear-gradient(rgba(255,255,255,.015) 50%, transparent 50%);
+    background-size: 100% 3px;
+  }
+
+  .border-b-hair{ border-bottom:1px solid var(--border); }
+  .border-t-hair{ border-top:1px solid var(--border); }
+
+  @keyframes pulse-red { 0%,100%{ opacity:.6; } 50%{ opacity:1; } }
+  .pulse-red{ animation: pulse-red 1.6s ease-in-out infinite; }
+
+  /* hide specimen/context column on mobile */
+  @media (max-width: 1023px){ .specimen-col{ display:none !important; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+/* ================== DATA ================== */
+const UNITS = [
+  { id:'u1', code:'01', title:'SALUDOS',      sub:'Greetings & introductions' },
+  { id:'u2', code:'02', title:'LA FAMILIA',   sub:'Family' },
+  { id:'u3', code:'03', title:'LA COMIDA',    sub:'Food & meals' },
+  { id:'u4', code:'04', title:'EN LA ESCUELA',sub:'At school' },
+  { id:'u5', code:'05', title:'LOS COLORES',  sub:'Colors' },
+];
+const SAMPLE = [
+  { id:'w1',  unit:'u1', es:'hola',        de:'hallo',         ex:'¡Hola! ¿Cómo estás?' },
+  { id:'w2',  unit:'u1', es:'buenos días', de:'guten Morgen',  ex:'Buenos días, señora López.' },
+  { id:'w3',  unit:'u1', es:'adiós',       de:'tschüss',       ex:'Adiós, hasta mañana.' },
+  { id:'w4',  unit:'u1', es:'gracias',     de:'danke',         ex:'Muchas gracias por tu ayuda.' },
+  { id:'w5',  unit:'u1', es:'por favor',   de:'bitte',         ex:'Un café, por favor.' },
+  { id:'w6',  unit:'u2', es:'la madre',    de:'die Mutter',    ex:'Mi madre se llama Ana.' },
+  { id:'w7',  unit:'u2', es:'el padre',    de:'der Vater',     ex:'Mi padre trabaja mucho.' },
+  { id:'w8',  unit:'u2', es:'el hermano',  de:'der Bruder',    ex:'Tengo un hermano pequeño.' },
+  { id:'w9',  unit:'u2', es:'la abuela',   de:'die Großmutter',ex:'Mi abuela vive en Madrid.' },
+  { id:'w10', unit:'u3', es:'la manzana',  de:'der Apfel',     ex:'Como una manzana cada día.' },
+  { id:'w11', unit:'u3', es:'el pan',      de:'das Brot',      ex:'El pan está fresco.' },
+  { id:'w12', unit:'u3', es:'el agua',     de:'das Wasser',    ex:'Bebo mucha agua.' },
+  { id:'w13', unit:'u3', es:'la leche',    de:'die Milch',     ex:'¿Quieres leche con el café?' },
+  { id:'w14', unit:'u3', es:'el queso',    de:'der Käse',      ex:'Me gusta el queso manchego.' },
+  { id:'w15', unit:'u4', es:'el libro',    de:'das Buch',      ex:'Leo un libro interesante.' },
+  { id:'w16', unit:'u4', es:'la escuela',  de:'die Schule',    ex:'La escuela empieza a las ocho.' },
+  { id:'w17', unit:'u4', es:'el profesor', de:'der Lehrer',    ex:'El profesor explica la lección.' },
+  { id:'w18', unit:'u4', es:'escribir',    de:'schreiben',     ex:'Escribo en mi cuaderno.' },
+  { id:'w19', unit:'u5', es:'rojo',        de:'rot',           ex:'El coche es rojo.' },
+  { id:'w20', unit:'u5', es:'azul',        de:'blau',          ex:'El cielo es azul.' },
+  { id:'w21', unit:'u5', es:'verde',       de:'grün',          ex:'Las hojas son verdes.' },
+  { id:'w22', unit:'u5', es:'amarillo',    de:'gelb',          ex:'El sol es amarillo.' },
+];
+const INITIAL_FACH = {
+  w1:3,w2:2,w3:1,w4:4,w5:2, w6:2,w7:3,w8:1,w9:1,
+  w10:1,w11:2,w12:3,w13:1,w14:2, w15:2,w16:1,w17:1,w18:1,
+  w19:3,w20:2,w21:2,w22:1,
+};
+function buildCards(){
+  const out={};
+  for(const v of SAMPLE){
+    out[v.id]={ ...v, fach:INITIAL_FACH[v.id]??1, seen:Math.floor(Math.random()*8)+2, correct:Math.floor(Math.random()*6)+1 };
+  }
+  return out;
+}
+
+/* ================== HOOKS ================== */
+const { useState, useEffect, useMemo, useRef } = React;
+
+function useIsMobile(){
+  const [m,setM] = useState(()=> typeof window !== 'undefined' ? window.innerWidth < 768 : true);
+  useEffect(()=>{
+    const onR = ()=> setM(window.innerWidth < 768);
+    window.addEventListener('resize', onR);
+    return ()=> window.removeEventListener('resize', onR);
+  },[]);
+  return m;
+}
+
+/* ================== SEGMENTED PROGRESS — 5 Fächer ================== */
+function FachBar({ counts, segmentHeight=10, showNumbers=true }) {
+  return (
+    <div>
+      <div className="flex gap-[3px]">
+        {[1,2,3,4,5].map(n=>{
+          const c = counts[n]||0;
+          const mini = Math.min(c, 12);
+          const color = n===5?'success':n===1?'accent':'full';
+          return (
+            <div key={n} className="flex-1 flex flex-col gap-[2px]">
+              <div className="flex items-end gap-[2px]" style={{height:segmentHeight}}>
+                {Array.from({length:12}).map((_,i)=>(
+                  <div key={i} className={"flex-1 " + (i<mini ? `seg ${color}` : 'seg empty')} style={{height:segmentHeight}}/>
+                ))}
+              </div>
+              {showNumbers && (
+                <div className="flex items-center justify-between">
+                  <span className="label" style={{fontSize:9}}>F{n}</span>
+                  <span className="font-mono text-[11px] text-[var(--text-display)]">{c}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FachSlots({ counts, currentFach }){
+  return (
+    <div className="grid grid-cols-5 gap-[6px]">
+      {[1,2,3,4,5].map(n=>{
+        const c = counts[n]||0;
+        const isCur = currentFach===n;
+        const isMast = n===5;
+        return (
+          <div key={n} className={"fach-slot relative " + (isCur?'current ':'') + (isMast?'mastered ':'')}>
+            <div className="flex items-center justify-between">
+              <span className="label" style={{fontSize:9}}>F{n}</span>
+              {isCur && <span className="red-dot" style={{width:6,height:6,boxShadow:'0 0 4px var(--accent)'}}/>}
+            </div>
+            <div className="relative" style={{height:42}}>
+              {Array.from({length: Math.min(c,8)}).map((_,i)=>(
+                <div key={i} className="absolute left-0 right-0"
+                  style={{
+                    bottom: i*3,
+                    height:10,
+                    background: isMast? 'var(--success)' : i===0 && isCur ? 'var(--text-display)' : 'rgba(255,255,255,'+(0.15+i*0.05)+')',
+                    opacity: isMast? 1-(i*0.08) : 1,
+                  }}/>
+              ))}
+              {c===0 && <div className="absolute inset-0 flex items-end"><span className="label" style={{fontSize:9,color:'var(--text-disabled)'}}>EMPTY</span></div>}
+            </div>
+            <div className="font-mono text-[13px] text-[var(--text-display)] leading-none">{c}</div>
+            <div className="label" style={{fontSize:8.5}}>{['','DAILY','2 DAYS','4 DAYS','WEEKLY','MASTERED'][n]}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ================== RESPONSIVE DEVICE WRAPPER ================== */
+function DeviceWrapper({ children, dark=true }){
+  const isMobile = useIsMobile();
+  if (isMobile){
+    return (
+      <div style={{
+        width:'100vw', minHeight:'100vh', minHeight:'100dvh',
+        background: dark?'#000':'#F5F5F5',
+        fontFamily:'"Space Grotesk", system-ui',
+      }}>
+        {children}
+      </div>
+    );
+  }
+  return (
+    <div style={{
+      width:390, height:844, borderRadius:54, overflow:'hidden', position:'relative',
+      background: dark?'#000':'#F2F2F7',
+      boxShadow:'0 40px 80px rgba(0,0,0,0.45), 0 0 0 10px #111, 0 0 0 11px #222',
+      fontFamily:'"Space Grotesk", system-ui',
+      WebkitFontSmoothing:'antialiased',
+    }}>
+      <div style={{ position:'absolute', top:11, left:'50%', transform:'translateX(-50%)', width:126, height:37, borderRadius:24, background:'#000', zIndex:50 }}/>
+      <div style={{ position:'absolute', top:0, left:0, right:0, zIndex:10, display:'flex', justifyContent:'space-between', padding:'20px 30px 0', color:'#fff', fontSize:15, fontWeight:600 }}>
+        <span style={{fontFamily:'-apple-system,system-ui'}}>9:41</span>
+        <span style={{display:'flex', gap:5, alignItems:'center'}}>
+          <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx=".5" fill="#fff"/><rect x="4.5" y="5" width="3" height="6" rx=".5" fill="#fff"/><rect x="9" y="2.5" width="3" height="8.5" rx=".5" fill="#fff"/><rect x="13.5" y="0" width="3" height="11" rx=".5" fill="#fff"/></svg>
+          <svg width="24" height="11" viewBox="0 0 24 11"><rect x="0.5" y=".5" width="21" height="10" rx="2.5" stroke="#fff" strokeOpacity=".4" fill="none"/><rect x="2" y="2" width="18" height="7" rx="1.2" fill="#fff"/><path d="M22.3 3.5v4c.7-.2 1.2-1 1.2-2s-.5-1.8-1.2-2z" fill="#fff" opacity=".4"/></svg>
+        </span>
+      </div>
+      <div style={{height:'100%'}}>{children}</div>
+      <div style={{ position:'absolute', bottom:8, left:0, right:0, display:'flex', justifyContent:'center', zIndex:60, pointerEvents:'none' }}>
+        <div style={{ width:134, height:5, borderRadius:100, background:'rgba(255,255,255,.7)' }}/>
+      </div>
+    </div>
+  );
+}
+
+/* ================== APP ================== */
+function App(){
+  const isMobile = useIsMobile();
+  const [cards, setCards] = useState(buildCards);
+  const [tab, setTab] = useState('learn');
+  const [selectedUnit, setSelectedUnit] = useState('u3');
+  const [direction, setDirection] = useState('es-de');
+  const [currentId, setCurrentId] = useState(null);
+  const [flipped, setFlipped] = useState(false);
+  const [result, setResult] = useState(null);
+  const [hopTo, setHopTo] = useState(null);
+  const [todayDone, setTodayDone] = useState(14);
+  const [streak] = useState(7);
+  const [mode, setMode] = useState('dark');
+  const [hotkey, setHotkey] = useState('doto');
+  const [showExample, setShowExample] = useState(true);
+  const [sheet, setSheet] = useState(null);
+
+  const pickNext = (excludeId)=>{
+    const pool = Object.values(cards).filter(c=>c.unit===selectedUnit && c.id!==excludeId);
+    pool.sort((a,b)=> a.fach - b.fach || Math.random()-.5);
+    const next = pool[0] || Object.values(cards).filter(c=>c.unit===selectedUnit)[0];
+    if(next) setCurrentId(next.id);
+    setFlipped(false); setResult(null);
+  };
+  useEffect(()=>{ if(!currentId) pickNext(); },[]);
+  useEffect(()=>{ pickNext(); },[selectedUnit]);
+
+  const current = currentId ? cards[currentId] : null;
+
+  const answer = (right)=>{
+    if(!current) return;
+    const from = current.fach;
+    const to = right ? Math.min(5, from+1) : 1;
+    setHopTo(to); setResult(right?'right':'wrong');
+    setTimeout(()=>{
+      setCards(prev=>({
+        ...prev,
+        [current.id]: { ...prev[current.id], fach:to, seen:prev[current.id].seen+1, correct:prev[current.id].correct+(right?1:0) }
+      }));
+      setHopTo(null);
+      setTodayDone(n=>Math.min(30, n+1));
+      pickNext(current.id);
+    }, 550);
+  };
+
+  const fachCounts = useMemo(()=>{
+    const c={1:0,2:0,3:0,4:0,5:0};
+    Object.values(cards).forEach(v=>c[v.fach]++);
+    return c;
+  },[cards]);
+
+  const unitFach = (unitId)=>{
+    const c={1:0,2:0,3:0,4:0,5:0};
+    Object.values(cards).filter(x=>x.unit===unitId).forEach(v=>c[v.fach]++);
+    return c;
+  };
+
+  const dueToday = fachCounts[1]+fachCounts[2];
+  const dark = mode==='dark';
+
+  const themeStyle = dark ? {} : {
+    '--black':'#F5F5F5', '--surface':'#FFFFFF', '--surface-raised':'#F0F0F0',
+    '--border':'#E8E8E8', '--border-visible':'#CCCCCC',
+    '--text-disabled':'#999', '--text-secondary':'#666', '--text-primary':'#1A1A1A', '--text-display':'#000',
+  };
+
+  const frontLang = direction==='es-de' ? 'es' : 'de';
+  const backLang  = direction==='es-de' ? 'de' : 'es';
+
+  const outerStyle = isMobile
+    ? { background: dark?'#000':'#F5F5F5', minHeight:'100vh', minHeight:'100dvh' }
+    : { background:'#161616' };
+  const outerClass = isMobile
+    ? 'flex flex-col'
+    : 'min-h-screen flex items-start justify-center py-8 px-4 gap-8';
+
+  return (
+    <div className={outerClass} style={outerStyle}>
+      <div className="specimen-col hidden lg:block text-[var(--text-secondary)] pt-24 font-mono text-[11px] max-w-[220px]">
+        <div className="label text-[var(--text-disabled)]" style={{fontSize:10}}>[ SPECIMEN / 01 ]</div>
+        <div className="mt-1 font-grotesk text-[var(--text-display)] text-[15px] leading-tight">Vokabeln</div>
+        <div className="mt-1 text-[11px] font-mono text-[var(--text-secondary)]">Spanisch → Deutsch · Leitner 5-Fach</div>
+        <div className="mt-8 space-y-1 text-[10px] leading-relaxed">
+          <div>→ iOS / Nothing-style</div>
+          <div>→ Space Grotesk · Space Mono · Doto</div>
+          <div>→ OLED black / warm off-white</div>
+          <div>→ Accent: D71921 (1 per screen)</div>
+        </div>
+        <div className="mt-8 dot-grid-fine h-24 opacity-70"/>
+      </div>
+
+      <DeviceWrapper dark={dark}>
+        <div className="h-full flex flex-col relative" style={{ background: dark?'#000':'#F5F5F5', ...themeStyle, color:'var(--text-primary)', minHeight: isMobile?'100dvh':'100%' }}>
+          {tab==='learn'    && <LearnScreen {...{cards,current,flipped,setFlipped,result,answer,selectedUnit,setSelectedUnit,direction,setDirection,frontLang,backLang,fachCounts,hopTo,todayDone,streak,dueToday,hotkey,showExample,dark,setSheet,isMobile}}/>}
+          {tab==='library'  && <LibraryScreen {...{cards, selectedUnit, setSelectedUnit, unitFach, setTab, setSheet, dark, isMobile}}/>}
+          {tab==='stats'    && <StatsScreen {...{cards, fachCounts, streak, todayDone, dueToday, unitFach, dark, isMobile}}/>}
+          {tab==='settings' && <SettingsScreen {...{mode,setMode,direction,setDirection,showExample,setShowExample,hotkey,setHotkey,dark,isMobile}}/>}
+
+          <TabBar tab={tab} setTab={setTab} dueToday={dueToday} dark={dark} isMobile={isMobile}/>
+
+          {sheet==='add' && <AddSheet onClose={()=>setSheet(null)} onAdd={(c)=>{
+            setCards(prev=>({...prev, [c.id]:{ ...c, fach:1, seen:0, correct:0 }}));
+            setSheet(null);
+          }} dark={dark}/>}
+        </div>
+      </DeviceWrapper>
+    </div>
+  );
+}
+
+/* ================== LEARN ================== */
+function LearnScreen(props){
+  const { current, flipped, setFlipped, result, answer, frontLang, backLang, fachCounts, hopTo, todayDone, hotkey, showExample, selectedUnit, setSheet, isMobile } = props;
+  const unit = UNITS.find(u=>u.id===selectedUnit);
+  const topPad = isMobile ? 'max(env(safe-area-inset-top), 16px)' : 54;
+
+  const speak = ()=>{
+    if(!current) return;
+    try{
+      const u = new SpeechSynthesisUtterance(current.es);
+      u.lang='es-ES'; u.rate=0.9;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    }catch(e){}
+  };
+
+  const frontText = current? current[frontLang] : '';
+  const backText  = current? current[backLang]  : '';
+
+  return (
+    <div className="flex-1 flex flex-col phone-scroll overflow-auto" style={{paddingTop:topPad}}>
+      <div className="flex items-start justify-between px-6 pt-3">
+        <div>
+          <div className="label">UNIDAD {unit?.code}</div>
+          <div className="font-mono text-[13px] text-[var(--text-display)] mt-0.5 tracking-wide">{unit?.title}</div>
+        </div>
+        <button onClick={()=>setSheet('add')} className="btn btn-ghost" style={{padding:'4px 0'}}>
+          <span className="label" style={{color:'var(--text-secondary)'}}>[ + ADD ]</span>
+        </button>
+      </div>
+
+      <div className="px-6 mt-4">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="label">SESSION · {todayDone}/30</span>
+          <span className="font-mono text-[11px] text-[var(--text-secondary)]">{Math.round(todayDone/30*100)}%</span>
+        </div>
+        <div className="flex gap-[2px]">
+          {Array.from({length:30}).map((_,i)=>(
+            <div key={i} className="flex-1" style={{height:4, background: i<todayDone?'var(--text-display)':'var(--border-visible)'}}/>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center px-6 py-6 relative">
+        {current && (
+          <div key={current.id+(flipped?'-b':'-f')} className="w-full card-swap">
+            {!flipped ? (
+              <CardFront word={frontText} hotkey={hotkey} onSpeak={speak} fach={current.fach} langLabel={frontLang==='es'?'ES':'DE'}/>
+            ) : (
+              <CardBack word={backText} example={showExample?current.ex:null} frontWord={frontText}
+                fach={current.fach} hopTo={hopTo} result={result}
+                langLabel={backLang==='es'?'ES':'DE'}
+                onSpeak={speak}
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="px-6 pb-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="label">LEITNER BOX</span>
+          <span className="font-mono text-[10px] text-[var(--text-secondary)]">F{current?.fach||1} {result && hopTo ? `→ F${hopTo}` : ''}</span>
+        </div>
+        <FachBar counts={fachCounts}/>
+      </div>
+
+      <div className="px-5 pb-3">
+        {!flipped ? (
+          <button className="btn btn-primary w-full" onClick={()=>setFlipped(true)}>
+            REVEAL ANSWER
+          </button>
+        ) : (
+          <div className="flex gap-3">
+            <button className="btn btn-destructive flex-1" onClick={()=>answer(false)}>
+              ✕ AGAIN
+            </button>
+            <button className="btn btn-primary flex-1" onClick={()=>answer(true)}>
+              ✓ KNEW IT
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CardFront({ word, hotkey, onSpeak, fach, langLabel }){
+  const useDoto = hotkey==='doto';
+  return (
+    <div className="relative border border-[var(--border-visible)] p-6 pb-7 min-h-[260px] flex flex-col justify-between"
+         style={{ background:'var(--surface)' }}>
+      <div className="dot-grid-fine absolute inset-0 opacity-60 pointer-events-none"/>
+      <div className="relative flex items-center justify-between">
+        <span className="label" style={{color:'var(--text-secondary)'}}>{langLabel} · F{fach}</span>
+        <button onClick={onSpeak} className="w-10 h-10 border border-[var(--border-visible)] rounded-full flex items-center justify-center active:bg-[var(--surface-raised)]" style={{background:'transparent'}}>
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+            <path d="M3 7h3l4-3v12l-4-3H3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+            <path d="M13 7c1.2.8 1.2 5.2 0 6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+            <path d="M15 5c2.2 1.5 2.2 8.5 0 10" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div className="relative flex-1 flex items-center">
+        <div className={useDoto?'font-display':'font-grotesk'}
+             style={{
+               fontSize: useDoto? 64 : 52,
+               lineHeight: .95,
+               fontWeight: useDoto? 700 : 500,
+               color:'var(--text-display)',
+               letterSpacing: useDoto? '-.04em':'-.03em',
+             }}>
+          {word}
+        </div>
+      </div>
+      <div className="relative flex items-center justify-between">
+        <span className="label" style={{color:'var(--text-disabled)'}}>[ TAP REVEAL TO FLIP ]</span>
+        <span className="label font-mono" style={{color:'var(--text-secondary)'}}>{String(word.length).padStart(2,'0')} CHR</span>
+      </div>
+    </div>
+  );
+}
+
+function CardBack({ word, example, frontWord, fach, hopTo, result, langLabel, onSpeak }){
+  const movedUp = result==='right';
+  return (
+    <div className="relative border p-6 pb-7 min-h-[260px] flex flex-col justify-between"
+         style={{
+           background:'var(--surface)',
+           borderColor: result==='right'?'var(--success)': result==='wrong'?'var(--accent)':'var(--border-visible)',
+         }}>
+      <div className="flex items-center justify-between">
+        <span className="label" style={{color:'var(--text-secondary)'}}>{langLabel} · ANSWER</span>
+        {result ? (
+          <span className="label font-mono" style={{color: movedUp?'var(--success)':'var(--accent)'}}>
+            [ F{fach} → F{hopTo} ]
+          </span>
+        ) : (
+          <span className="label" style={{color:'var(--text-secondary)'}}>F{fach}</span>
+        )}
+      </div>
+      <div className="flex-1 flex flex-col justify-center">
+        <div className="font-grotesk" style={{ fontSize:44, lineHeight:1.0, fontWeight:500, color:'var(--text-display)', letterSpacing:'-.02em'}}>
+          {word}
+        </div>
+        <div className="font-mono text-[12px] text-[var(--text-secondary)] mt-2">({frontWord})</div>
+        {example && (
+          <div className="mt-5 border-l-2 border-[var(--border-visible)] pl-3 font-grotesk italic text-[14px] text-[var(--text-primary)] leading-snug">
+            {example}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center justify-between">
+        <button onClick={onSpeak} className="label flex items-center gap-2" style={{color:'var(--text-secondary)', background:'transparent', border:'none', cursor:'pointer'}}>
+          <span>⏵ PLAY AUDIO</span>
+        </button>
+        <span className="label" style={{color:'var(--text-disabled)'}}>[ DID YOU KNOW IT? ]</span>
+      </div>
+    </div>
+  );
+}
+
+/* ================== LIBRARY ================== */
+function LibraryScreen({ cards, selectedUnit, setSelectedUnit, unitFach, setTab, setSheet, isMobile }){
+  const topPad = isMobile ? 'max(env(safe-area-inset-top), 16px)' : 54;
+  return (
+    <div className="flex-1 flex flex-col phone-scroll overflow-auto" style={{paddingTop:topPad}}>
+      <div className="px-6 pt-3 pb-4">
+        <div className="label">LIBRARY</div>
+        <div className="font-display text-[var(--text-display)] mt-1" style={{ fontSize:48, lineHeight:.95, fontWeight:700, letterSpacing:'-.04em'}}>
+          {Object.keys(cards).length}
+        </div>
+        <div className="flex items-baseline gap-2 mt-1">
+          <span className="font-mono text-[13px] text-[var(--text-secondary)]">CARDS · 5 UNIDADES · ES→DE</span>
+        </div>
+      </div>
+
+      <div>
+        {UNITS.map(u=>{
+          const fc = unitFach(u.id);
+          const total = Object.values(fc).reduce((a,b)=>a+b,0);
+          const mastered = fc[5];
+          const due = fc[1]+fc[2];
+          const isCur = selectedUnit===u.id;
+          return (
+            <button key={u.id}
+              onClick={()=>{ setSelectedUnit(u.id); setTab('learn'); }}
+              className="w-full text-left px-6 py-5 border-b-hair relative"
+              style={{background: isCur ? 'var(--surface)' : 'transparent', border:'none', borderBottom:'1px solid var(--border)'}}>
+              {isCur && <div className="absolute left-0 top-0 bottom-0" style={{width:2, background:'var(--accent)'}}/>}
+              <div className="flex items-baseline justify-between mb-3">
+                <div>
+                  <span className="font-mono text-[12px] text-[var(--text-secondary)]">U{u.code}</span>
+                  <span className="font-grotesk text-[20px] text-[var(--text-display)] ml-3" style={{letterSpacing:'-.01em'}}>{u.title.toLowerCase().replace(/(^\w)/, m=>m.toUpperCase())}</span>
+                </div>
+                <span className="font-mono text-[16px] text-[var(--text-display)]">{total}</span>
+              </div>
+              <FachBar counts={fc} segmentHeight={6} showNumbers={false}/>
+              <div className="flex items-center justify-between mt-2">
+                <span className="label" style={{fontSize:10}}>{u.sub.toUpperCase()}</span>
+                <span className="font-mono text-[10px]" style={{color: due>0?'var(--accent)':'var(--text-secondary)'}}>
+                  {due>0? `${due} DUE` : mastered===total? 'MASTERED' : `${mastered}/${total} MASTERED`}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="px-6 py-6 flex-1 flex items-end">
+        <button onClick={()=>setSheet('add')} className="btn btn-secondary w-full">+ ADD VOCABULARY</button>
+      </div>
+    </div>
+  );
+}
+
+/* ================== STATS ================== */
+function StatsScreen({ cards, fachCounts, streak, todayDone, dueToday, unitFach, isMobile }){
+  const topPad = isMobile ? 'max(env(safe-area-inset-top), 16px)' : 54;
+  const total = Object.values(cards).length;
+  const mastered = fachCounts[5];
+  const masteredPct = Math.round(mastered/total*100);
+  const history = [3,5,4,8,6,9,7,12,10,14,11,16,13,18];
+  const maxH = 20;
+
+  return (
+    <div className="flex-1 flex flex-col phone-scroll overflow-auto" style={{paddingTop:topPad, paddingBottom:12}}>
+      <div className="px-6 pt-3">
+        <div className="label">STATS · ALL TIME</div>
+      </div>
+
+      <div className="px-6 mt-2 mb-5">
+        <div className="flex items-baseline gap-3">
+          <div className="font-display" style={{ fontSize:110, lineHeight:.88, fontWeight:700, color:'var(--text-display)', letterSpacing:'-.05em'}}>
+            {masteredPct}
+          </div>
+          <div className="font-mono text-[16px] text-[var(--text-secondary)] pb-3">%</div>
+        </div>
+        <div className="label mt-1">MASTERED · {mastered}/{total} CARDS</div>
+      </div>
+
+      <div className="px-5 mb-5">
+        <div className="flex items-center justify-between px-1 mb-2">
+          <span className="label">LEITNER DISTRIBUTION</span>
+          <span className="font-mono text-[10px] text-[var(--text-secondary)]">LIVE</span>
+        </div>
+        <FachSlots counts={fachCounts}/>
+      </div>
+
+      <div className="border-t-hair border-b-hair">
+        <StatRow label="STREAK"     value={streak}    unit="DAYS"  valueColor="var(--text-display)"/>
+        <StatRow label="DUE TODAY"  value={dueToday}  unit="CARDS" valueColor={dueToday>10?'var(--accent)':'var(--text-display)'}/>
+        <StatRow label="DONE TODAY" value={todayDone} unit={`/ 30`} valueColor={todayDone>=30?'var(--success)':'var(--text-display)'}/>
+        <StatRow label="ACCURACY"   value="87"        unit="%" valueColor="var(--success)" last/>
+      </div>
+
+      <div className="px-6 mt-5">
+        <div className="flex items-baseline justify-between mb-2">
+          <span className="label">LAST 14 DAYS</span>
+          <span className="font-mono text-[11px] text-[var(--success)]">↗ +28%</span>
+        </div>
+        <div className="flex items-end gap-[3px]" style={{height:80}}>
+          {history.map((v,i)=>(
+            <div key={i} className="flex-1 flex flex-col gap-[1px] justify-end">
+              {Array.from({length:10}).map((_,j)=>{
+                const filled = j < Math.round(v/maxH*10);
+                return <div key={j} style={{height:6, background: filled?'var(--text-display)':'var(--border-visible)'}}/>
+              })}
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-between mt-2 label" style={{fontSize:9}}>
+          <span>-14D</span><span>-7D</span><span>TODAY</span>
+        </div>
+      </div>
+
+      <div className="px-5 mt-6">
+        <div className="flex items-center justify-between px-1 mb-2">
+          <span className="label">PER UNIDAD</span>
+        </div>
+        {UNITS.map(u=>{
+          const fc = unitFach(u.id);
+          const tot = Object.values(fc).reduce((a,b)=>a+b,0);
+          const m = fc[5];
+          const pct = tot? Math.round(m/tot*100) : 0;
+          return (
+            <div key={u.id} className="flex items-baseline gap-3 py-2.5 border-b-hair px-1">
+              <span className="font-mono text-[10px] text-[var(--text-secondary)] w-6">U{u.code}</span>
+              <span className="font-grotesk text-[13px] flex-1 text-[var(--text-primary)]">{u.title.toLowerCase().replace(/(^\w)/,m=>m.toUpperCase())}</span>
+              <div className="flex gap-[2px]" style={{width:90}}>
+                {Array.from({length:10}).map((_,i)=>(
+                  <div key={i} className="flex-1" style={{height:8, background: i<Math.round(pct/10)?'var(--success)':'var(--border-visible)'}}/>
+                ))}
+              </div>
+              <span className="font-mono text-[11px] text-[var(--text-display)] w-10 text-right">{pct}%</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StatRow({ label, value, unit, valueColor, last }){
+  return (
+    <div className={"flex items-baseline justify-between px-6 py-4 " + (!last?'border-b-hair':'')}>
+      <span className="label">{label}</span>
+      <div className="flex items-baseline gap-2">
+        <span className="font-mono" style={{fontSize:22, color:valueColor, letterSpacing:'-.01em'}}>{value}</span>
+        <span className="label" style={{color:'var(--text-secondary)'}}>{unit}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ================== SETTINGS ================== */
+function SettingsScreen({ mode, setMode, direction, setDirection, showExample, setShowExample, hotkey, setHotkey, isMobile }){
+  const topPad = isMobile ? 'max(env(safe-area-inset-top), 16px)' : 54;
+  return (
+    <div className="flex-1 flex flex-col phone-scroll overflow-auto" style={{paddingTop:topPad, paddingBottom:12}}>
+      <div className="px-6 pt-3">
+        <div className="label">SETTINGS</div>
+        <div className="font-grotesk text-[28px] text-[var(--text-display)] mt-1" style={{letterSpacing:'-.01em'}}>Preferences</div>
+      </div>
+
+      <Section title="APPEARANCE">
+        <Segmented value={mode} set={setMode} options={[['dark','DARK'],['light','LIGHT']]}/>
+      </Section>
+
+      <Section title="HERO TYPEFACE">
+        <Segmented value={hotkey} set={setHotkey} options={[['doto','DOTO · DOT-MATRIX'],['grotesk','SPACE GROTESK']]}/>
+        <div className="label mt-3" style={{color:'var(--text-disabled)', fontSize:10}}>
+          DOTO EVOKES THE NOTHING PHONE GLYPH. SPACE GROTESK IS QUIETER.
+        </div>
+      </Section>
+
+      <Section title="DIRECTION">
+        <Segmented value={direction} set={setDirection} options={[['es-de','ES → DE'],['de-es','DE → ES']]}/>
+      </Section>
+
+      <Section title="REVIEW">
+        <ToggleRow label="SHOW EXAMPLE SENTENCE" value={showExample} set={setShowExample}/>
+        <ToggleRow label="AUTOPLAY AUDIO" value={false} set={()=>{}} last/>
+      </Section>
+
+      <div className="px-6 py-6">
+        <div className="label" style={{color:'var(--text-disabled)'}}>V 3.0 · NOTHING EDITION · {new Date().getFullYear()}</div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }){
+  return (
+    <div className="mt-5 border-t-hair border-b-hair">
+      <div className="px-6 pt-4 pb-3 label">{title}</div>
+      <div className="px-6 pb-4">{children}</div>
+    </div>
+  );
+}
+
+function Segmented({ value, set, options }){
+  return (
+    <div className="flex border border-[var(--border-visible)] rounded-full overflow-hidden" style={{height:40}}>
+      {options.map(([v,l])=>(
+        <button key={v} onClick={()=>set(v)} className="flex-1 label" style={{
+          background: value===v?'var(--text-display)':'transparent',
+          color: value===v?'var(--black)':'var(--text-secondary)',
+          fontSize:10, letterSpacing:'.1em',
+          transition:'all .2s cubic-bezier(.25,.1,.25,1)',
+          border:'none', cursor:'pointer',
+        }}>{l}</button>
+      ))}
+    </div>
+  );
+}
+
+function ToggleRow({ label, value, set, last }){
+  return (
+    <div className={"flex items-center justify-between py-3.5 " + (!last?'border-b-hair':'')}>
+      <span className="label">{label}</span>
+      <button onClick={()=>set(!value)}
+        className="relative"
+        style={{ width:46, height:28, borderRadius:999, background: value?'var(--text-display)':'var(--border-visible)', transition:'background .2s', border:'none', cursor:'pointer' }}>
+        <span style={{
+          position:'absolute', top:3, left: value? 21 : 3,
+          width:22, height:22, borderRadius:'50%',
+          background: value?'var(--black)':'var(--text-disabled)',
+          transition:'left .2s cubic-bezier(.25,.1,.25,1)',
+        }}/>
+      </button>
+    </div>
+  );
+}
+
+/* ================== TAB BAR ================== */
+function TabBar({ tab, setTab, dueToday, dark, isMobile }){
+  const tabs = [
+    ['learn', 'LEARN'],
+    ['library','LIBRARY'],
+    ['stats','STATS'],
+    ['settings','SETTINGS'],
+  ];
+  const bottomPad = isMobile ? 'max(env(safe-area-inset-bottom), 14px)' : 26;
+  return (
+    <div className="relative" style={{
+      background: dark?'rgba(0,0,0,.85)':'rgba(245,245,245,.9)',
+      backdropFilter:'blur(12px)',
+      WebkitBackdropFilter:'blur(12px)',
+      borderTop:'1px solid var(--border)',
+      paddingBottom:bottomPad,
+    }}>
+      <div className="flex">
+        {tabs.map(([id,lbl])=>{
+          const active = tab===id;
+          return (
+            <div key={id} onClick={()=>setTab(id)} className="tab-bar-item relative">
+              <span className="label" style={{
+                color: active?'var(--text-display)':'var(--text-disabled)',
+                fontSize:9, letterSpacing:'.14em',
+              }}>{lbl}</span>
+              {active && <span className="absolute" style={{bottom: isMobile?'calc(max(env(safe-area-inset-bottom), 14px) + 4px)':'16px', width:14, height:2, background:'var(--text-display)'}}/>}
+              {id==='learn' && dueToday>0 && !active && (
+                <span className="absolute top-[7px] right-1/2 translate-x-[18px] red-dot" style={{width:6,height:6}}/>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ================== ADD SHEET ================== */
+function AddSheet({ onClose, onAdd, dark }){
+  const [es,setEs]=useState('');
+  const [de,setDe]=useState('');
+  const [ex,setEx]=useState('');
+  const [unit,setUnit]=useState('u3');
+  const [flash,setFlash]=useState('');
+
+  const submit=()=>{
+    if(!es.trim()||!de.trim()){ setFlash('[ERROR: SPANISH AND GERMAN REQUIRED]'); return; }
+    onAdd({ id:'u'+Date.now(), unit, es:es.trim(), de:de.trim(), ex:ex.trim() });
+  };
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-end" style={{background:'rgba(0,0,0,.75)'}} onClick={onClose}>
+      <div onClick={(e)=>e.stopPropagation()}
+        className="w-full"
+        style={{
+          background: dark?'var(--surface)':'#fff',
+          borderTopLeftRadius:24, borderTopRightRadius:24,
+          borderTop:'1px solid var(--border-visible)',
+          padding:'16px 20px calc(max(env(safe-area-inset-bottom), 24px) + 10px)',
+          animation:'sheetUp .3s cubic-bezier(.25,.1,.25,1)',
+        }}>
+        <style>{`@keyframes sheetUp { from{transform:translateY(100%);} to{transform:none;} }`}</style>
+        <div className="flex justify-center mb-4"><div style={{width:36,height:4,borderRadius:2, background:'var(--border-visible)'}}/></div>
+        <div className="flex items-center justify-between mb-5">
+          <span className="label">ADD VOCABULARY</span>
+          <button onClick={onClose} className="label" style={{color:'var(--text-secondary)', background:'transparent', border:'none', cursor:'pointer'}}>[ CLOSE ]</button>
+        </div>
+
+        <Field label="UNIDAD">
+          <select value={unit} onChange={e=>setUnit(e.target.value)}
+            className="w-full bg-transparent border-b border-[var(--border-visible)] pb-2 font-grotesk text-[17px] text-[var(--text-primary)] focus:border-[var(--text-display)] outline-none">
+            {UNITS.map(u=><option key={u.id} value={u.id} style={{background:'#111', color:'#fff'}}>U{u.code} — {u.title}</option>)}
+          </select>
+        </Field>
+        <Field label="SPANISH">
+          <input value={es} onChange={e=>setEs(e.target.value)} placeholder="la biblioteca"
+            className="w-full bg-transparent border-b border-[var(--border-visible)] pb-2 font-grotesk text-[22px] text-[var(--text-display)] placeholder:text-[var(--text-disabled)] outline-none focus:border-[var(--text-display)]"/>
+        </Field>
+        <Field label="GERMAN">
+          <input value={de} onChange={e=>setDe(e.target.value)} placeholder="die Bibliothek"
+            className="w-full bg-transparent border-b border-[var(--border-visible)] pb-2 font-grotesk text-[22px] text-[var(--text-display)] placeholder:text-[var(--text-disabled)] outline-none focus:border-[var(--text-display)]"/>
+        </Field>
+        <Field label="EXAMPLE · OPTIONAL">
+          <input value={ex} onChange={e=>setEx(e.target.value)} placeholder="Voy a la biblioteca los lunes."
+            className="w-full bg-transparent border-b border-[var(--border-visible)] pb-2 font-grotesk italic text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none focus:border-[var(--text-display)]"/>
+        </Field>
+
+        {flash && <div className="label mb-3" style={{color:'var(--accent)'}}>{flash}</div>}
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn btn-secondary flex-1">CANCEL</button>
+          <button onClick={submit} className="btn btn-primary flex-1">ADD TO F1</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }){
+  return (
+    <div className="mb-5">
+      <div className="label mb-2">{label}</div>
+      {children}
+    </div>
+  );
+}
+
+/* ================== MOUNT ================== */
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
