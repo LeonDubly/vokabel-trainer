@@ -376,6 +376,32 @@ function buildCards(){
   return out;
 }
 
+/* ================== EMOJI MAP (for pixel-art picture on answer side) ================== */
+const EMOJI = {
+  // Comida
+  w85:'🍎',w86:'🍞',w87:'💧',w88:'🥛',w89:'🧀',w90:'☕',w91:'🍵',w92:'🥚',w93:'🥩',w94:'🐟',
+  w95:'🍗',w96:'🍚',w97:'🍝',w98:'🍲',w99:'🥗',w100:'🍓',w101:'🥦',w102:'🍬',w103:'🧂',w104:'🥐',w105:'🍽',
+  // Cuerpo
+  w106:'🧠',w108:'🙂',w109:'👁',w110:'👃',w111:'👄',w112:'👂',w113:'🦷',w115:'💪',w116:'✋',w117:'👆',
+  w118:'🦵',w119:'🦶',w120:'❤',w121:'🫀',w123:'🧴',
+  // Casa
+  w124:'🏠',w125:'🏢',w126:'🚪',w127:'🪟',w128:'🍳',w129:'🛁',w130:'🛏',w131:'🛋',w132:'🛏',w133:'🛋',
+  w134:'💡',w135:'🪑',w136:'🪑',w139:'🔑',w140:'🪞',w141:'🚿',w142:'🌳',w143:'🪜',
+  // Ropa
+  w144:'👔',w145:'👕',w146:'👖',w147:'👗',w148:'👗',w149:'👟',w150:'🧦',w151:'🧥',w152:'🧥',w153:'🎩',
+  w154:'🧢',w155:'🧣',w156:'🧤',w158:'👓',
+  // Escuela
+  w159:'📚',w160:'🏫',w165:'📓',w166:'🖊',w167:'✏',w168:'🎒',w169:'📝',
+  // Colores (color squares)
+  w52:'🟥',w53:'🟦',w54:'🟩',w55:'🟨',w56:'⬛',w57:'⬜',w59:'🟧',w61:'🟫',w62:'🟪',
+  // Tiempo
+  w65:'☀',w66:'🌙',w67:'📅',w68:'📆',w69:'🎉',w83:'🕐',
+  // Familia
+  w37:'👩',w38:'👨',w40:'👦',w41:'👧',w44:'👴',w45:'👵',w50:'🧑',w51:'👩',
+  // Saludos / Verbos — few iconic ones
+  w13:'✅',w14:'❌',w178:'🚶',w188:'😴',w186:'🍽',w187:'🥤',
+};
+
 /* ================== HOOKS ================== */
 const { useState, useEffect, useMemo, useRef } = React;
 
@@ -387,6 +413,86 @@ function useIsMobile(){
     return ()=> window.removeEventListener('resize', onR);
   },[]);
   return m;
+}
+
+/* ================== VOICE — pick best Spanish voice available ================== */
+function useSpanishVoice(){
+  const [voice, setVoice] = useState(null);
+  useEffect(()=>{
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const pick = ()=>{
+      const voices = speechSynthesis.getVoices();
+      if (!voices.length) return;
+      const score = (v)=>{
+        const n = v.name || '';
+        let s = 0;
+        if (v.lang === 'es-ES') s += 6;
+        else if (v.lang === 'es-MX' || v.lang === 'es-US') s += 4;
+        else if (v.lang && v.lang.startsWith('es')) s += 2;
+        else return -1;
+        if (/premium|enhanced|neural|siri/i.test(n)) s += 10;
+        if (/google/i.test(n)) s += 7;
+        if (/mónica|monica|paulina|jorge|diego|helena|mateo/i.test(n)) s += 4;
+        if (v.localService) s += 1;
+        return s;
+      };
+      const best = voices.map(v=>({v,s:score(v)})).filter(x=>x.s>=0).sort((a,b)=>b.s-a.s)[0];
+      if (best) setVoice(best.v);
+    };
+    pick();
+    speechSynthesis.addEventListener('voiceschanged', pick);
+    return ()=> speechSynthesis.removeEventListener('voiceschanged', pick);
+  },[]);
+  return voice;
+}
+function speakEs(text, voice){
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'es-ES';
+    u.rate = 0.92;
+    u.pitch = 1.0;
+    if (voice) u.voice = voice;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch(e) {}
+}
+
+/* ================== PIXEL EMOJI — render emoji as dot-matrix for UI style ================== */
+function PixelEmoji({ emoji, res=22, pixel=3, color='var(--text-display)' }){
+  const [dots, setDots] = useState(null);
+  useEffect(()=>{
+    if (!emoji) { setDots(null); return; }
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = res; canvas.height = res;
+      const ctx = canvas.getContext('2d', { willReadFrequently:true });
+      ctx.clearRect(0,0,res,res);
+      ctx.font = (res - 2) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",system-ui';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.fillText(emoji, res/2, res/2 + 1);
+      const data = ctx.getImageData(0,0,res,res).data;
+      const out = [];
+      for(let y=0; y<res; y++){
+        for(let x=0; x<res; x++){
+          const i = (y*res + x) * 4;
+          const a = data[i+3];
+          if (a > 80) out.push([x,y]);
+        }
+      }
+      setDots(out);
+    } catch(e) { setDots(null); }
+  }, [emoji, res]);
+  const total = res * pixel;
+  if (!dots) return <div style={{width:total, height:total}}/>;
+  return (
+    <svg width={total} height={total} viewBox={`0 0 ${res} ${res}`} style={{shapeRendering:'crispEdges'}}>
+      {dots.map(([x,y],i)=>(
+        <circle key={i} cx={x+0.5} cy={y+0.5} r={0.42} fill={color}/>
+      ))}
+    </svg>
+  );
 }
 
 /* ================== SEGMENTED PROGRESS — 5 Fächer ================== */
@@ -609,18 +715,13 @@ function LearnScreen(props){
   const { current, flipped, setFlipped, result, answer, frontLang, backLang, fachCounts, hopTo, todayDone, hotkey, showExample, selectedUnit, setSheet, isMobile } = props;
   const unit = UNITS.find(u=>u.id===selectedUnit);
   const topPad = isMobile ? 'max(env(safe-area-inset-top), 16px)' : 54;
+  const voice = useSpanishVoice();
 
-  const speak = ()=>{
-    if(!current) return;
-    try{
-      const u = new SpeechSynthesisUtterance(current.es);
-      u.lang='es-ES'; u.rate=0.9;
-      speechSynthesis.cancel(); speechSynthesis.speak(u);
-    }catch(e){}
-  };
+  const speak = ()=>{ if(current) speakEs(current.es, voice); };
 
   const frontText = current? current[frontLang] : '';
   const backText  = current? current[backLang]  : '';
+  const emoji = current ? EMOJI[current.id] : null;
 
   return (
     <div className="flex-1 flex flex-col phone-scroll overflow-auto" style={{paddingTop:topPad}}>
@@ -645,12 +746,14 @@ function LearnScreen(props){
         {current && (
           <div key={current.id+(flipped?'-b':'-f')} className="w-full card-swap">
             {!flipped ? (
-              <CardFront word={frontText} hotkey={hotkey} onSpeak={speak} fach={current.fach} langLabel={frontLang==='es'?'ES':'DE'}/>
+              <CardFront word={frontText} hotkey={hotkey} onSpeak={speak} onFlip={()=>setFlipped(true)} fach={current.fach} langLabel={frontLang==='es'?'ES':'DE'}/>
             ) : (
               <CardBack word={backText} example={showExample?current.ex:null} frontWord={frontText}
                 fach={current.fach} hopTo={hopTo} result={result}
                 langLabel={backLang==='es'?'ES':'DE'}
                 onSpeak={speak}
+                emoji={emoji}
+                showEmojiForDe={backLang==='de'}
               />
             )}
           </div>
@@ -685,15 +788,17 @@ function LearnScreen(props){
   );
 }
 
-function CardFront({ word, hotkey, onSpeak, fach, langLabel }){
+function CardFront({ word, hotkey, onSpeak, onFlip, fach, langLabel }){
   const useDoto = hotkey==='doto';
   return (
-    <div className="relative border border-[var(--border-visible)] p-6 pb-7 min-h-[260px] flex flex-col justify-between"
-         style={{ background:'var(--surface)' }}>
+    <div role="button" tabIndex={0} onClick={onFlip}
+         onKeyDown={e=>{ if(e.key==='Enter'||e.key===' ') onFlip(); }}
+         className="relative border border-[var(--border-visible)] p-6 pb-7 min-h-[260px] flex flex-col justify-between"
+         style={{ background:'var(--surface)', cursor:'pointer', WebkitTapHighlightColor:'transparent' }}>
       <div className="dot-grid-fine absolute inset-0 opacity-60 pointer-events-none"/>
       <div className="relative flex items-center justify-between">
         <span className="label" style={{color:'var(--text-secondary)'}}>{langLabel} · F{fach}</span>
-        <button onClick={onSpeak} className="w-10 h-10 border border-[var(--border-visible)] rounded-full flex items-center justify-center active:bg-[var(--surface-raised)]" style={{background:'transparent'}}>
+        <button onClick={(e)=>{ e.stopPropagation(); onSpeak(); }} className="w-10 h-10 border border-[var(--border-visible)] rounded-full flex items-center justify-center active:bg-[var(--surface-raised)]" style={{background:'transparent'}} aria-label="Aussprache anhören">
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
             <path d="M3 7h3l4-3v12l-4-3H3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
             <path d="M13 7c1.2.8 1.2 5.2 0 6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
@@ -714,15 +819,16 @@ function CardFront({ word, hotkey, onSpeak, fach, langLabel }){
         </div>
       </div>
       <div className="relative flex items-center justify-between">
-        <span className="label" style={{color:'var(--text-disabled)'}}>[ TAP REVEAL TO FLIP ]</span>
+        <span className="label" style={{color:'var(--text-disabled)'}}>[ TAP CARD TO FLIP ]</span>
         <span className="label font-mono" style={{color:'var(--text-secondary)'}}>{String(word.length).padStart(2,'0')} CHR</span>
       </div>
     </div>
   );
 }
 
-function CardBack({ word, example, frontWord, fach, hopTo, result, langLabel, onSpeak }){
+function CardBack({ word, example, frontWord, fach, hopTo, result, langLabel, onSpeak, emoji, showEmojiForDe }){
   const movedUp = result==='right';
+  const showPixel = emoji && showEmojiForDe;
   return (
     <div className="relative border p-6 pb-7 min-h-[260px] flex flex-col justify-between"
          style={{
@@ -740,12 +846,21 @@ function CardBack({ word, example, frontWord, fach, hopTo, result, langLabel, on
         )}
       </div>
       <div className="flex-1 flex flex-col justify-center">
-        <div className="font-grotesk" style={{ fontSize:44, lineHeight:1.0, fontWeight:500, color:'var(--text-display)', letterSpacing:'-.02em'}}>
-          {word}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="font-grotesk" style={{ fontSize:40, lineHeight:1.0, fontWeight:500, color:'var(--text-display)', letterSpacing:'-.02em', wordBreak:'break-word'}}>
+              {word}
+            </div>
+            <div className="font-mono text-[12px] text-[var(--text-secondary)] mt-2">({frontWord})</div>
+          </div>
+          {showPixel && (
+            <div className="shrink-0" style={{marginTop:2}}>
+              <PixelEmoji emoji={emoji} res={22} pixel={3} color="var(--text-display)"/>
+            </div>
+          )}
         </div>
-        <div className="font-mono text-[12px] text-[var(--text-secondary)] mt-2">({frontWord})</div>
         {example && (
-          <div className="mt-5 border-l-2 border-[var(--border-visible)] pl-3 font-grotesk italic text-[14px] text-[var(--text-primary)] leading-snug">
+          <div className="mt-4 border-l-2 border-[var(--border-visible)] pl-3 font-grotesk italic text-[14px] text-[var(--text-primary)] leading-snug">
             {example}
           </div>
         )}
