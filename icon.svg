@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <!-- Black paper, iOS app-icon radius (iOS clips to its own mask anyway but we draw bg full-bleed) -->
+  <rect width="180" height="180" fill="#000"/>
+
+  <!-- Faint dot grid — same language as the app background -->
+  <g fill="#ffffff" opacity="0.05">
+    <circle cx="18"  cy="18"  r="0.9"/><circle cx="36"  cy="18"  r="0.9"/><circle cx="54"  cy="18"  r="0.9"/><circle cx="72"  cy="18"  r="0.9"/><circle cx="90"  cy="18"  r="0.9"/><circle cx="108" cy="18"  r="0.9"/><circle cx="126" cy="18"  r="0.9"/><circle cx="144" cy="18"  r="0.9"/><circle cx="162" cy="18"  r="0.9"/>
+    <circle cx="18"  cy="36"  r="0.9"/><circle cx="36"  cy="36"  r="0.9"/><circle cx="54"  cy="36"  r="0.9"/><circle cx="72"  cy="36"  r="0.9"/><circle cx="90"  cy="36"  r="0.9"/><circle cx="108" cy="36"  r="0.9"/><circle cx="126" cy="36"  r="0.9"/><circle cx="144" cy="36"  r="0.9"/><circle cx="162" cy="36"  r="0.9"/>
+    <circle cx="18"  cy="54"  r="0.9"/><circle cx="36"  cy="54"  r="0.9"/><circle cx="54"  cy="54"  r="0.9"/><circle cx="72"  cy="54"  r="0.9"/><circle cx="90"  cy="54"  r="0.9"/><circle cx="108" cy="54"  r="0.9"/><circle cx="126" cy="54"  r="0.9"/><circle cx="144" cy="54"  r="0.9"/><circle cx="162" cy="54"  r="0.9"/>
+    <circle cx="18"  cy="72"  r="0.9"/><circle cx="36"  cy="72"  r="0.9"/><circle cx="54"  cy="72"  r="0.9"/><circle cx="72"  cy="72"  r="0.9"/><circle cx="90"  cy="72"  r="0.9"/><circle cx="108" cy="72"  r="0.9"/><circle cx="126" cy="72"  r="0.9"/><circle cx="144" cy="72"  r="0.9"/><circle cx="162" cy="72"  r="0.9"/>
+    <circle cx="18"  cy="90"  r="0.9"/><circle cx="36"  cy="90"  r="0.9"/><circle cx="54"  cy="90"  r="0.9"/><circle cx="72"  cy="90"  r="0.9"/><circle cx="90"  cy="90"  r="0.9"/><circle cx="108" cy="90"  r="0.9"/><circle cx="126" cy="90"  r="0.9"/><circle cx="144" cy="90"  r="0.9"/><circle cx="162" cy="90"  r="0.9"/>
+    <circle cx="18"  cy="108" r="0.9"/><circle cx="36"  cy="108" r="0.9"/><circle cx="54"  cy="108" r="0.9"/><circle cx="72"  cy="108" r="0.9"/><circle cx="90"  cy="108" r="0.9"/><circle cx="108" cy="108" r="0.9"/><circle cx="126" cy="108" r="0.9"/><circle cx="144" cy="108" r="0.9"/><circle cx="162" cy="108" r="0.9"/>
+    <circle cx="18"  cy="126" r="0.9"/><circle cx="36"  cy="126" r="0.9"/><circle cx="54"  cy="126" r="0.9"/><circle cx="72"  cy="126" r="0.9"/><circle cx="90"  cy="126" r="0.9"/><circle cx="108" cy="126" r="0.9"/><circle cx="126" cy="126" r="0.9"/><circle cx="144" cy="126" r="0.9"/><circle cx="162" cy="126" r="0.9"/>
+  </g>
+
+  <!-- Letter V, Doto-style dot matrix: hand-placed circles on an 11x6 grid -->
+  <g fill="#ffffff">
+    <!-- Row y=32 — top of V -->
+    <circle cx="30"  cy="32"  r="8"/>
+    <circle cx="150" cy="32"  r="8"/>
+    <!-- Row y=50 -->
+    <circle cx="42"  cy="50"  r="8"/>
+    <circle cx="138" cy="50"  r="8"/>
+    <!-- Row y=68 -->
+    <circle cx="54"  cy="68"  r="8"/>
+    <circle cx="126" cy="68"  r="8"/>
+    <!-- Row y=86 -->
+    <circle cx="66"  cy="86"  r="8"/>
+    <circle cx="114" cy="86"  r="8"/>
+    <!-- Row y=104 -->
+    <circle cx="78"  cy="104" r="8"/>
+    <circle cx="102" cy="104" r="8"/>
+    <!-- Row y=120 — apex -->
+    <circle cx="90"  cy="120" r="8"/>
+  </g>
+
+  <!-- Spanish flag band at the bottom, 1:2:1 proportion — the one accent moment -->
+  <rect x="30"  y="142" width="120" height="6"  fill="#D71921"/>
+  <rect x="30"  y="148" width="120" height="12" fill="#D4A843"/>
+  <rect x="30"  y="160" width="120" height="6"  fill="#D71921"/>
+</svg>
