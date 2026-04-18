@@ -368,13 +368,10 @@ const SAMPLE = [
   { id:'w214', unit:'u12', es:'triste',         de:'traurig',            ex:'Se siente triste.' },
   { id:'w215', unit:'u12', es:'rápido',         de:'schnell',            ex:'Un coche rápido.' },
 ];
-function buildCards(){
-  const out={};
-  for(const v of SAMPLE){
-    out[v.id]={ ...v, fach:1, seen:0, correct:0 };
-  }
-  return out;
-}
+/* Catalog = static pool of available words. User's active set (= cards in
+   Learn) starts empty; units are opt-in from the Library. */
+const CATALOG = (()=>{ const o={}; for(const v of SAMPLE) o[v.id]=v; return o; })();
+function buildCards(){ return {}; }
 
 /* ================== WORD ICONS (monoline SVG, same aesthetic as tab bar) ================== */
 const WORD_ICONS = {
@@ -764,7 +761,7 @@ function App(){
   const isMobile = useIsMobile();
   const [cards, setCards] = useState(buildCards);
   const [tab, setTab] = useState('learn');
-  const [selectedUnit, setSelectedUnit] = useState('u3');
+  const [selectedUnit, setSelectedUnit] = useState('u1');
   const [direction, setDirection] = useState('es-de');
   const [currentId, setCurrentId] = useState(null);
   const [flipped, setFlipped] = useState(false);
@@ -778,14 +775,35 @@ function App(){
   const [sheet, setSheet] = useState(null);
 
   const pickNext = (excludeId)=>{
-    const pool = Object.values(cards).filter(c=>c.unit===selectedUnit && c.id!==excludeId);
+    let pool = Object.values(cards).filter(c=>c.unit===selectedUnit && c.id!==excludeId);
+    if (!pool.length) pool = Object.values(cards).filter(c=>c.id!==excludeId);
     pool.sort((a,b)=> a.fach - b.fach || Math.random()-.5);
-    const next = pool[0] || Object.values(cards).filter(c=>c.unit===selectedUnit)[0];
-    if(next) setCurrentId(next.id);
+    const next = pool[0] || Object.values(cards).filter(c=>c.unit===selectedUnit)[0] || Object.values(cards)[0];
+    if (next) {
+      setCurrentId(next.id);
+      if (next.unit !== selectedUnit) setSelectedUnit(next.unit);
+    } else {
+      setCurrentId(null);
+    }
     setFlipped(false); setResult(null);
   };
-  useEffect(()=>{ if(!currentId) pickNext(); },[]);
-  useEffect(()=>{ pickNext(); },[selectedUnit]);
+  useEffect(()=>{ if(!currentId || !cards[currentId]) pickNext(); },[cards, selectedUnit]);
+
+  // Add all missing catalog cards of a unit to the active set. Idempotent —
+  // already-active cards (whether added as custom or previously bulk-added)
+  // are skipped, so tapping ADD again after the user has extended the unit
+  // will only add the genuinely missing ones.
+  const addUnit = (unitId)=>{
+    const missing = Object.values(CATALOG).filter(c=>c.unit===unitId && !cards[c.id]);
+    if (!missing.length) return;
+    setCards(prev=>{
+      const next = {...prev};
+      for (const c of missing) next[c.id] = { ...c, fach:1, seen:0, correct:0 };
+      return next;
+    });
+  };
+  const catalogUnitCount = (unitId)=> Object.values(CATALOG).filter(c=>c.unit===unitId).length;
+  const missingUnitCount = (unitId)=> Object.values(CATALOG).filter(c=>c.unit===unitId && !cards[c.id]).length;
 
   const current = currentId ? cards[currentId] : null;
 
@@ -853,8 +871,8 @@ function App(){
 
       <DeviceWrapper dark={dark}>
         <div className="flex flex-col relative" style={{ background: dark?'#000':'#F5F5F5', ...themeStyle, color:'var(--text-primary)', height:'100%', flex:1, minHeight:0, overflow:'hidden' }}>
-          {tab==='learn'    && <LearnScreen {...{cards,current,flipped,setFlipped,result,answer,selectedUnit,setSelectedUnit,direction,setDirection,frontLang,backLang,fachCounts,hopTo,todayDone,streak,dueToday,hotkey,showExample,dark,setSheet,isMobile}}/>}
-          {tab==='library'  && <LibraryScreen {...{cards, selectedUnit, setSelectedUnit, unitFach, setTab, setSheet, dark, isMobile}}/>}
+          {tab==='learn'    && <LearnScreen {...{cards,current,flipped,setFlipped,result,answer,selectedUnit,setSelectedUnit,direction,setDirection,frontLang,backLang,fachCounts,hopTo,todayDone,streak,dueToday,hotkey,showExample,dark,setSheet,setTab,isMobile}}/>}
+          {tab==='library'  && <LibraryScreen {...{cards, selectedUnit, setSelectedUnit, unitFach, setTab, setSheet, dark, isMobile, addUnit, catalogUnitCount, missingUnitCount}}/>}
           {tab==='stats'    && <StatsScreen {...{cards, fachCounts, streak, todayDone, dueToday, unitFach, dark, isMobile}}/>}
           {tab==='settings' && <SettingsScreen {...{mode,setMode,direction,setDirection,showExample,setShowExample,hotkey,setHotkey,dark,isMobile}}/>}
 
@@ -872,7 +890,7 @@ function App(){
 
 /* ================== LEARN ================== */
 function LearnScreen(props){
-  const { current, flipped, setFlipped, result, answer, frontLang, backLang, fachCounts, hopTo, todayDone, hotkey, showExample, selectedUnit, setSheet, isMobile } = props;
+  const { cards, current, flipped, setFlipped, result, answer, frontLang, backLang, fachCounts, hopTo, todayDone, hotkey, showExample, selectedUnit, setSheet, setTab, isMobile } = props;
   const unit = UNITS.find(u=>u.id===selectedUnit);
   const topPad = isMobile ? 'max(env(safe-area-inset-top), 16px)' : 54;
   const voice = useSpanishVoice();
@@ -882,6 +900,28 @@ function LearnScreen(props){
   const frontText = current? current[frontLang] : '';
   const backText  = current? current[backLang]  : '';
   const iconName = current ? WORD_ICONS[current.id] : null;
+  const hasAnyCards = Object.keys(cards).length > 0;
+
+  if (!hasAnyCards) {
+    return (
+      <div className="flex-1 flex flex-col phone-scroll overflow-auto" style={{paddingTop:topPad}}>
+        <div className="px-6 pt-3">
+          <div className="label">LEARN</div>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center gap-5">
+          <div className="font-display" style={{fontSize:72, lineHeight:.9, fontWeight:700, color:'var(--text-display)', letterSpacing:'-.04em'}}>0</div>
+          <div className="label" style={{fontSize:11}}>NO CARDS YET</div>
+          <div className="font-grotesk text-[15px] text-[var(--text-secondary)] leading-snug max-w-[260px]">
+            Add a unit from the Library to start learning. You can add your own words too.
+          </div>
+          <button onClick={()=>setTab('library')} className="btn btn-primary mt-2" style={{paddingLeft:28, paddingRight:28}}>
+            GO TO LIBRARY →
+          </button>
+        </div>
+        <div style={{height:16}}/>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col phone-scroll overflow-auto" style={{paddingTop:topPad}}>
@@ -1111,54 +1151,117 @@ function CardBack({ word, example, frontWord, fach, hopTo, result, langLabel, on
 }
 
 /* ================== LIBRARY ================== */
-function LibraryScreen({ cards, selectedUnit, setSelectedUnit, unitFach, setTab, setSheet, isMobile }){
+function LibraryScreen({ cards, selectedUnit, setSelectedUnit, unitFach, setTab, setSheet, isMobile, addUnit, catalogUnitCount, missingUnitCount }){
   const topPad = isMobile ? 'max(env(safe-area-inset-top), 16px)' : 54;
+  const activeCount = Object.keys(cards).length;
+  const catalogTotal = UNITS.reduce((s,u)=>s+catalogUnitCount(u.id), 0);
+  const [justAdded, setJustAdded] = useState(null);
+  const flash = (id)=>{ setJustAdded(id); setTimeout(()=>setJustAdded(null), 900); };
+
   return (
     <div className="flex-1 flex flex-col phone-scroll overflow-auto" style={{paddingTop:topPad}}>
       <div className="px-6 pt-3 pb-4">
         <div className="label">LIBRARY</div>
-        <div className="font-display text-[var(--text-display)] mt-1" style={{ fontSize:48, lineHeight:.95, fontWeight:700, letterSpacing:'-.04em'}}>
-          {Object.keys(cards).length}
+        <div className="flex items-baseline gap-2 mt-1">
+          <div className="font-display text-[var(--text-display)]" style={{ fontSize:48, lineHeight:.95, fontWeight:700, letterSpacing:'-.04em'}}>
+            {activeCount}
+          </div>
+          <div className="font-mono text-[18px] text-[var(--text-secondary)]">/ {catalogTotal}</div>
         </div>
         <div className="flex items-baseline gap-2 mt-1">
-          <span className="font-mono text-[13px] text-[var(--text-secondary)]">CARDS · 5 UNIDADES · ES→DE</span>
+          <span className="font-mono text-[12px] text-[var(--text-secondary)]">ACTIVE · {UNITS.length} UNIDADES · ES→DE</span>
         </div>
       </div>
 
       <div>
         {UNITS.map(u=>{
           const fc = unitFach(u.id);
-          const total = Object.values(fc).reduce((a,b)=>a+b,0);
+          const activeInUnit = Object.values(fc).reduce((a,b)=>a+b,0);
+          const catalogInUnit = catalogUnitCount(u.id);
+          const missing = missingUnitCount(u.id);
           const mastered = fc[5];
           const due = fc[1]+fc[2];
           const isCur = selectedUnit===u.id;
+          const isEmpty = activeInUnit === 0;
+          const fullyLoaded = missing === 0;
+          const flashOn = justAdded === u.id;
+
+          const onRow = ()=>{
+            if (isEmpty) return;              // nothing to learn, tap does nothing
+            setSelectedUnit(u.id); setTab('learn');
+          };
+          const onAdd = (e)=>{
+            e.stopPropagation();
+            if (missing === 0) return;
+            addUnit(u.id);
+            flash(u.id);
+          };
+
           return (
-            <button key={u.id}
-              onClick={()=>{ setSelectedUnit(u.id); setTab('learn'); }}
+            <div key={u.id}
+              onClick={onRow}
+              role={isEmpty?'group':'button'}
               className="w-full text-left px-6 py-5 border-b-hair relative"
-              style={{background: isCur ? 'var(--surface)' : 'transparent', border:'none', borderBottom:'1px solid var(--border)'}}>
-              {isCur && <div className="absolute left-0 top-0 bottom-0" style={{width:2, background:'var(--accent)'}}/>}
-              <div className="flex items-baseline justify-between mb-3">
-                <div>
+              style={{
+                background: isCur && !isEmpty ? 'var(--surface)' : 'transparent',
+                borderBottom:'1px solid var(--border)',
+                cursor: isEmpty ? 'default' : 'pointer',
+                opacity: isEmpty ? .78 : 1,
+              }}>
+              {isCur && !isEmpty && <div className="absolute left-0 top-0 bottom-0" style={{width:2, background:'var(--accent)'}}/>}
+              {flashOn && <div className="absolute left-0 top-0 bottom-0" style={{width:2, background:'var(--success)', transition:'opacity .4s'}}/>}
+
+              <div className="flex items-baseline justify-between mb-3 gap-3">
+                <div className="min-w-0 flex-1">
                   <span className="font-mono text-[12px] text-[var(--text-secondary)]">U{u.code}</span>
-                  <span className="font-grotesk text-[20px] text-[var(--text-display)] ml-3" style={{letterSpacing:'-.01em'}}>{u.title.toLowerCase().replace(/(^\w)/, m=>m.toUpperCase())}</span>
+                  <span className="font-grotesk text-[20px] text-[var(--text-display)] ml-3" style={{letterSpacing:'-.01em'}}>
+                    {u.title.toLowerCase().replace(/(^\w)/, m=>m.toUpperCase())}
+                  </span>
                 </div>
-                <span className="font-mono text-[16px] text-[var(--text-display)]">{total}</span>
-              </div>
-              <FachBar counts={fc} segmentHeight={6} showNumbers={false}/>
-              <div className="flex items-center justify-between mt-2">
-                <span className="label" style={{fontSize:10}}>{u.sub.toUpperCase()}</span>
-                <span className="font-mono text-[10px]" style={{color: due>0?'var(--accent)':'var(--text-secondary)'}}>
-                  {due>0? `${due} DUE` : mastered===total? 'MASTERED' : `${mastered}/${total} MASTERED`}
+                {/* Count: active / catalog */}
+                <span className="font-mono text-[13px] shrink-0">
+                  <span style={{color: isEmpty?'var(--text-disabled)':'var(--text-display)'}}>{activeInUnit}</span>
+                  <span style={{color:'var(--text-disabled)'}}> / {catalogInUnit}</span>
                 </span>
               </div>
-            </button>
+
+              {!isEmpty && <FachBar counts={fc} segmentHeight={6} showNumbers={false}/>}
+              {isEmpty && (
+                <div className="flex gap-[2px]" style={{height:6}}>
+                  {Array.from({length:catalogInUnit}).map((_,i)=>(
+                    <div key={i} className="flex-1" style={{background:'var(--border-visible)', opacity:.4, height:6}}/>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between mt-3 gap-3">
+                <span className="label" style={{fontSize:10}}>{u.sub.toUpperCase()}</span>
+
+                {fullyLoaded && !isEmpty ? (
+                  <span className="font-mono text-[10px]" style={{color: due>0?'var(--accent)':'var(--text-secondary)'}}>
+                    {due>0? `${due} DUE` : mastered===activeInUnit? '✓ MASTERED' : `${mastered}/${activeInUnit} MASTERED`}
+                  </span>
+                ) : (
+                  <button onClick={onAdd}
+                    className="label"
+                    style={{
+                      background: flashOn ? 'var(--success)' : 'transparent',
+                      color: flashOn ? '#000' : 'var(--text-display)',
+                      border: '1px solid ' + (flashOn ? 'var(--success)' : 'var(--border-visible)'),
+                      padding: '6px 12px', letterSpacing:'.14em', fontSize:10,
+                      cursor:'pointer', transition:'all .2s',
+                    }}>
+                    {flashOn ? `✓ +${catalogInUnit - activeInUnit}` : `+ ADD ${missing}`}
+                  </button>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>
 
       <div className="px-6 py-6 flex-1 flex items-end">
-        <button onClick={()=>setSheet('add')} className="btn btn-secondary w-full">+ ADD VOCABULARY</button>
+        <button onClick={()=>setSheet('add')} className="btn btn-secondary w-full">+ ADD OWN VOCABULARY</button>
       </div>
     </div>
   );
@@ -1169,7 +1272,7 @@ function StatsScreen({ cards, fachCounts, streak, todayDone, dueToday, unitFach,
   const topPad = isMobile ? 'max(env(safe-area-inset-top), 16px)' : 54;
   const total = Object.values(cards).length;
   const mastered = fachCounts[5];
-  const masteredPct = Math.round(mastered/total*100);
+  const masteredPct = total > 0 ? Math.round(mastered/total*100) : 0;
   const history = [3,5,4,8,6,9,7,12,10,14,11,16,13,18];
   const maxH = 20;
 
