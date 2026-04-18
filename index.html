@@ -914,6 +914,8 @@ function LearnScreen(props){
                 onSpeak={speak}
                 iconName={iconName}
                 showIconForDe={backLang==='de'}
+                onSwipeLeft={()=>answer(false)}
+                onSwipeRight={()=>answer(true)}
               />
             )}
           </div>
@@ -986,14 +988,81 @@ function CardFront({ word, hotkey, onSpeak, onFlip, fach, langLabel }){
   );
 }
 
-function CardBack({ word, example, frontWord, fach, hopTo, result, langLabel, onSpeak, iconName, showIconForDe }){
+function CardBack({ word, example, frontWord, fach, hopTo, result, langLabel, onSpeak, iconName, showIconForDe, onSwipeLeft, onSwipeRight }){
   const movedUp = result==='right';
   const showIcon = iconName && showIconForDe;
+  const [dx, setDx] = useState(0);
+  const drag = useRef({ x0:0, y0:0, axis:null, active:false, locked:false });
+  const committed = !!result;
+
+  const onPointerDown = (e)=>{
+    if (committed) return;
+    if (e.target.closest && e.target.closest('button')) return; // ignore taps on buttons
+    drag.current = { x0:e.clientX, y0:e.clientY, axis:null, active:true, locked:false };
+    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch(_){}
+  };
+  const onPointerMove = (e)=>{
+    if (!drag.current.active || committed) return;
+    const ddx = e.clientX - drag.current.x0;
+    const ddy = e.clientY - drag.current.y0;
+    if (!drag.current.axis){
+      if (Math.abs(ddx) > 6 || Math.abs(ddy) > 6){
+        drag.current.axis = Math.abs(ddx) > Math.abs(ddy) ? 'h' : 'v';
+      }
+    }
+    if (drag.current.axis === 'h'){
+      e.preventDefault?.();
+      setDx(ddx);
+    }
+  };
+  const end = ()=>{
+    if (!drag.current.active) return;
+    const x = dx;
+    drag.current.active = false;
+    drag.current.axis = null;
+    const threshold = 88;
+    if (x >  threshold) { setDx(380); setTimeout(()=>{ setDx(0); onSwipeRight?.(); }, 180); return; }
+    if (x < -threshold) { setDx(-380); setTimeout(()=>{ setDx(0); onSwipeLeft?.();  }, 180); return; }
+    setDx(0);
+  };
+
+  const magnitude = Math.min(1, Math.abs(dx)/120);
+  const borderColor = committed
+    ? (result==='right'?'var(--success)':'var(--accent)')
+    : dx >  12 ? 'var(--success)'
+    : dx < -12 ? 'var(--accent)'
+    : 'var(--border-visible)';
+  const transforming = dx !== 0;
+  const swipeStyle = {
+    transform: transforming ? `translateX(${dx}px) rotate(${dx*0.04}deg)` : 'none',
+    transition: drag.current.active ? 'none' : 'transform .25s cubic-bezier(.25,.1,.25,1)',
+    touchAction: 'pan-y',
+  };
+
   return (
+    <div className="relative" style={{touchAction:'pan-y'}}>
+      {/* Swipe-direction backplate hints */}
+      {!committed && (
+        <>
+          <div className="absolute inset-0 flex items-center justify-start pl-5 pointer-events-none"
+               style={{ opacity: dx < -12 ? magnitude : 0, transition:'opacity .1s' }}>
+            <span className="label" style={{color:'var(--accent)', fontSize:13, letterSpacing:'.16em'}}>✕ AGAIN</span>
+          </div>
+          <div className="absolute inset-0 flex items-center justify-end pr-5 pointer-events-none"
+               style={{ opacity: dx > 12 ? magnitude : 0, transition:'opacity .1s' }}>
+            <span className="label" style={{color:'var(--success)', fontSize:13, letterSpacing:'.16em'}}>✓ KNEW IT</span>
+          </div>
+        </>
+      )}
     <div className="relative border p-6 pb-7 min-h-[260px] flex flex-col justify-between"
+         onPointerDown={onPointerDown}
+         onPointerMove={onPointerMove}
+         onPointerUp={end}
+         onPointerCancel={end}
          style={{
            background:'var(--surface)',
-           borderColor: result==='right'?'var(--success)': result==='wrong'?'var(--accent)':'var(--border-visible)',
+           borderColor,
+           ...swipeStyle,
          }}>
       <div className="flex items-center justify-between">
         <span className="label" style={{color:'var(--text-secondary)'}}>{langLabel} · ANSWER</span>
@@ -1026,11 +1095,12 @@ function CardBack({ word, example, frontWord, fach, hopTo, result, langLabel, on
         )}
       </div>
       <div className="flex items-center justify-between">
-        <button onClick={onSpeak} className="label flex items-center gap-2" style={{color:'var(--text-secondary)', background:'transparent', border:'none', cursor:'pointer'}}>
+        <button onClick={(e)=>{ e.stopPropagation(); onSpeak(); }} className="label flex items-center gap-2" style={{color:'var(--text-secondary)', background:'transparent', border:'none', cursor:'pointer'}}>
           <span>⏵ PLAY AUDIO</span>
         </button>
-        <span className="label" style={{color:'var(--text-disabled)'}}>[ DID YOU KNOW IT? ]</span>
+        <span className="label" style={{color:'var(--text-disabled)'}}>[ SWIPE ← AGAIN · KNEW IT → ]</span>
       </div>
+    </div>
     </div>
   );
 }
