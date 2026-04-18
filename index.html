@@ -1599,7 +1599,11 @@ function TabBar({ tab, setTab, dueToday, dark, isMobile }){
     ['stats','STATS'],
     ['settings','SETTINGS'],
   ];
-  const bottomPad = isMobile ? 'max(env(safe-area-inset-bottom), 10px)' : 20;
+  // On iOS, env(safe-area-inset-bottom) is ~34px (home-indicator reserve).
+  // Respecting the whole thing leaves a visible empty strip below the labels,
+  // so we keep roughly half of it — enough clearance for the home indicator
+  // without the "1 cm of dead space" the user noticed.
+  const bottomPad = isMobile ? 'max(calc(env(safe-area-inset-bottom) - 18px), 6px)' : 16;
   return (
     <div className="relative" style={{
       background: dark?'rgba(0,0,0,.92)':'rgba(245,245,245,.95)',
@@ -1607,7 +1611,7 @@ function TabBar({ tab, setTab, dueToday, dark, isMobile }){
       WebkitBackdropFilter:'blur(20px) saturate(1.4)',
       borderTop:'1px solid var(--border)',
       paddingBottom:bottomPad,
-      paddingTop:8,
+      paddingTop:6,
     }}>
       <div className="flex">
         {tabs.map(([id,lbl])=>{
