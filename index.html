@@ -399,14 +399,9 @@ function LearnScreen(props){
 
   return (
     <div className="flex-1 flex flex-col phone-scroll overflow-auto" style={{paddingTop:topPad}}>
-      <div className="flex items-start justify-between px-6 pt-3">
-        <div>
-          <div className="label">UNIDAD {unit?.code}</div>
-          <div className="font-mono text-[13px] text-[var(--text-display)] mt-0.5 tracking-wide">{unit?.title}</div>
-        </div>
-        <button onClick={()=>setSheet('add')} className="btn btn-ghost" style={{padding:'4px 0'}}>
-          <span className="label" style={{color:'var(--text-secondary)'}}>[ + ADD ]</span>
-        </button>
+      <div className="px-6 pt-3">
+        <div className="label">UNIDAD {unit?.code}</div>
+        <div className="font-mono text-[13px] text-[var(--text-display)] mt-0.5 tracking-wide">{unit?.title}</div>
       </div>
 
       <div className="px-6 mt-4">
