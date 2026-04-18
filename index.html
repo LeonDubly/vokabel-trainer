@@ -773,6 +773,11 @@ function App(){
   const [hotkey, setHotkey] = useState('doto');
   const [showExample, setShowExample] = useState(true);
   const [sheet, setSheet] = useState(null);
+  const [viewUnit, setViewUnit] = useState(null);
+
+  // Tab change helper — always clears the library detail drill-in so
+  // re-tapping LIBRARY from anywhere returns you to the unit list.
+  const goToTab = (t)=>{ setViewUnit(null); setTab(t); };
 
   const pickNext = (excludeId)=>{
     let pool = Object.values(cards).filter(c=>c.unit===selectedUnit && c.id!==excludeId);
@@ -871,12 +876,15 @@ function App(){
 
       <DeviceWrapper dark={dark}>
         <div className="flex flex-col relative" style={{ background: dark?'#000':'#F5F5F5', ...themeStyle, color:'var(--text-primary)', height:'100%', flex:1, minHeight:0, overflow:'hidden' }}>
-          {tab==='learn'    && <LearnScreen {...{cards,current,flipped,setFlipped,result,answer,selectedUnit,setSelectedUnit,direction,setDirection,frontLang,backLang,fachCounts,hopTo,todayDone,streak,dueToday,hotkey,showExample,dark,setSheet,setTab,isMobile}}/>}
-          {tab==='library'  && <LibraryScreen {...{cards, selectedUnit, setSelectedUnit, unitFach, setTab, setSheet, dark, isMobile, addUnit, catalogUnitCount, missingUnitCount}}/>}
+          {tab==='learn'    && <LearnScreen {...{cards,current,flipped,setFlipped,result,answer,selectedUnit,setSelectedUnit,direction,setDirection,frontLang,backLang,fachCounts,hopTo,todayDone,streak,dueToday,hotkey,showExample,dark,setSheet,setTab:goToTab,isMobile}}/>}
+          {tab==='library'  && (viewUnit
+            ? <UnitDetailScreen {...{unit:UNITS.find(u=>u.id===viewUnit), cards, addUnit, catalogUnitCount, missingUnitCount, setTab:goToTab, setSelectedUnit, setViewUnit, isMobile}}/>
+            : <LibraryScreen {...{cards, selectedUnit, setSelectedUnit, unitFach, setTab:goToTab, setSheet, setViewUnit, dark, isMobile, addUnit, catalogUnitCount, missingUnitCount}}/>
+          )}
           {tab==='stats'    && <StatsScreen {...{cards, fachCounts, streak, todayDone, dueToday, unitFach, dark, isMobile}}/>}
           {tab==='settings' && <SettingsScreen {...{mode,setMode,direction,setDirection,showExample,setShowExample,hotkey,setHotkey,dark,isMobile}}/>}
 
-          <TabBar tab={tab} setTab={setTab} dueToday={dueToday} dark={dark} isMobile={isMobile}/>
+          <TabBar tab={tab} setTab={goToTab} dueToday={dueToday} dark={dark} isMobile={isMobile}/>
 
           {sheet==='add' && <AddSheet onClose={()=>setSheet(null)} onAdd={(c)=>{
             setCards(prev=>({...prev, [c.id]:{ ...c, fach:1, seen:0, correct:0 }}));
@@ -1151,7 +1159,7 @@ function CardBack({ word, example, frontWord, fach, hopTo, result, langLabel, on
 }
 
 /* ================== LIBRARY ================== */
-function LibraryScreen({ cards, selectedUnit, setSelectedUnit, unitFach, setTab, setSheet, isMobile, addUnit, catalogUnitCount, missingUnitCount }){
+function LibraryScreen({ cards, selectedUnit, setSelectedUnit, unitFach, setTab, setSheet, setViewUnit, isMobile, addUnit, catalogUnitCount, missingUnitCount }){
   const topPad = isMobile ? 'max(env(safe-area-inset-top), 16px)' : 54;
   const activeCount = Object.keys(cards).length;
   const catalogTotal = UNITS.reduce((s,u)=>s+catalogUnitCount(u.id), 0);
@@ -1186,10 +1194,7 @@ function LibraryScreen({ cards, selectedUnit, setSelectedUnit, unitFach, setTab,
           const fullyLoaded = missing === 0;
           const flashOn = justAdded === u.id;
 
-          const onRow = ()=>{
-            if (isEmpty) return;              // nothing to learn, tap does nothing
-            setSelectedUnit(u.id); setTab('learn');
-          };
+          const onRow = ()=>{ setViewUnit(u.id); };
           const onAdd = (e)=>{
             e.stopPropagation();
             if (missing === 0) return;
@@ -1200,13 +1205,13 @@ function LibraryScreen({ cards, selectedUnit, setSelectedUnit, unitFach, setTab,
           return (
             <div key={u.id}
               onClick={onRow}
-              role={isEmpty?'group':'button'}
+              role="button"
               className="w-full text-left px-6 py-5 border-b-hair relative"
               style={{
                 background: isCur && !isEmpty ? 'var(--surface)' : 'transparent',
                 borderBottom:'1px solid var(--border)',
-                cursor: isEmpty ? 'default' : 'pointer',
-                opacity: isEmpty ? .78 : 1,
+                cursor:'pointer',
+                opacity: isEmpty ? .82 : 1,
               }}>
               {isCur && !isEmpty && <div className="absolute left-0 top-0 bottom-0" style={{width:2, background:'var(--accent)'}}/>}
               {flashOn && <div className="absolute left-0 top-0 bottom-0" style={{width:2, background:'var(--success)', transition:'opacity .4s'}}/>}
@@ -1262,6 +1267,107 @@ function LibraryScreen({ cards, selectedUnit, setSelectedUnit, unitFach, setTab,
 
       <div className="px-6 py-6 flex-1 flex items-end">
         <button onClick={()=>setSheet('add')} className="btn btn-secondary w-full">+ ADD OWN VOCABULARY</button>
+      </div>
+    </div>
+  );
+}
+
+/* ================== UNIT DETAIL ================== */
+function UnitDetailScreen({ unit, cards, addUnit, catalogUnitCount, missingUnitCount, setTab, setSelectedUnit, setViewUnit, isMobile }){
+  const topPad = isMobile ? 'max(env(safe-area-inset-top), 16px)' : 54;
+  const unitCards = Object.values(CATALOG).filter(c=>c.unit===unit.id);
+  // also include user-added custom cards that belong to this unit but aren't in the static catalog
+  const extraActive = Object.values(cards).filter(c=>c.unit===unit.id && !CATALOG[c.id]);
+  const activeCount = unitCards.filter(c=>cards[c.id]).length + extraActive.length;
+  const missing = missingUnitCount(unit.id);
+  const total = catalogUnitCount(unit.id) + extraActive.length;
+
+  const startLearning = ()=>{ setSelectedUnit(unit.id); setTab('learn'); };
+  const addAndLearn = ()=>{ addUnit(unit.id); setSelectedUnit(unit.id); setTab('learn'); };
+
+  const Row = ({ c, active })=>{
+    const iconName = WORD_ICONS[c.id];
+    return (
+      <div className="px-6 py-3 flex items-center gap-3"
+        style={{ borderBottom:'1px solid var(--border)', opacity: active ? 1 : .5 }}>
+        <div style={{width:36, height:36, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center'}}>
+          {iconName
+            ? <WordIcon name={iconName} size={32}/>
+            : <div style={{width:24, height:24, border:'1px solid var(--border-visible)', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                <span className="label" style={{fontSize:9, color:'var(--text-disabled)', letterSpacing:'.06em'}}>{c.es.replace(/^(el|la|los|las) /,'').substring(0,2).toUpperCase()}</span>
+              </div>
+          }
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-grotesk" style={{fontSize:15, color:'var(--text-display)', lineHeight:1.15, letterSpacing:'-.005em', wordBreak:'break-word'}}>{c.es}</div>
+          <div className="font-mono" style={{fontSize:11, color:'var(--text-secondary)', marginTop:1}}>{c.de}</div>
+        </div>
+        <div className="shrink-0 ml-2" style={{minWidth:32, textAlign:'right'}}>
+          {active ? (
+            <span className="font-mono" style={{fontSize:11, color: active.fach===5?'var(--success)':active.fach===1?'var(--accent)':'var(--text-display)', border:'1px solid ' + (active.fach===5?'var(--success)':active.fach===1?'var(--accent)':'var(--border-visible)'), padding:'2px 6px'}}>
+              F{active.fach}
+            </span>
+          ) : (
+            <span className="label" style={{color:'var(--text-disabled)', fontSize:10}}>—</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex-1 flex flex-col phone-scroll overflow-auto" style={{paddingTop:topPad}}>
+      {/* Header with back */}
+      <div className="px-6 pt-3 pb-1">
+        <button onClick={()=>setViewUnit(null)}
+          className="label" style={{background:'transparent', border:'none', cursor:'pointer', color:'var(--text-secondary)', padding:0, fontSize:11}}>
+          ← LIBRARY
+        </button>
+      </div>
+      <div className="px-6 pt-3 pb-5">
+        <div className="label">UNIDAD {unit.code}</div>
+        <div className="font-grotesk mt-1" style={{fontSize:30, color:'var(--text-display)', letterSpacing:'-.02em', lineHeight:1}}>
+          {unit.title.toLowerCase().replace(/(^\w)/, m=>m.toUpperCase())}
+        </div>
+        <div className="label mt-2" style={{color:'var(--text-secondary)', fontSize:10}}>{unit.sub.toUpperCase()}</div>
+        <div className="flex items-baseline gap-2 mt-4">
+          <span className="font-mono" style={{fontSize:26, color:'var(--text-display)', letterSpacing:'-.01em'}}>{activeCount}</span>
+          <span className="font-mono" style={{fontSize:14, color:'var(--text-secondary)'}}>/ {total} ACTIVE</span>
+        </div>
+      </div>
+
+      {/* Active custom cards first (if any) */}
+      {extraActive.length > 0 && (
+        <>
+          <div className="px-6 pt-2 pb-2 label" style={{color:'var(--text-disabled)', fontSize:10}}>CUSTOM · {extraActive.length}</div>
+          {extraActive.map(c=> <Row key={c.id} c={c} active={c}/>)}
+        </>
+      )}
+
+      {/* Catalog list — active ones first, then inactive */}
+      {unitCards.filter(c=>cards[c.id]).length > 0 && (
+        <div className="px-6 pt-3 pb-2 label" style={{color:'var(--text-disabled)', fontSize:10}}>ACTIVE · {unitCards.filter(c=>cards[c.id]).length}</div>
+      )}
+      {unitCards.filter(c=>cards[c.id]).map(c=> <Row key={c.id} c={c} active={cards[c.id]}/>)}
+
+      {missing > 0 && (
+        <>
+          <div className="px-6 pt-3 pb-2 label" style={{color:'var(--text-disabled)', fontSize:10}}>AVAILABLE · {missing}</div>
+          {unitCards.filter(c=>!cards[c.id]).map(c=> <Row key={c.id} c={c} active={null}/>)}
+        </>
+      )}
+
+      {/* Bottom actions (sticky area via padding; inner scroll handles it) */}
+      <div className="px-5 py-5 flex flex-col gap-3" style={{marginTop:12}}>
+        {missing > 0 && activeCount > 0 && (
+          <button onClick={()=>addUnit(unit.id)} className="btn btn-secondary w-full">
+            + ADD {missing} MISSING
+          </button>
+        )}
+        {activeCount > 0
+          ? <button onClick={startLearning} className="btn btn-primary w-full">LEARN THIS UNIT</button>
+          : <button onClick={addAndLearn} className="btn btn-primary w-full">+ ADD ALL & LEARN</button>
+        }
       </div>
     </div>
   );
