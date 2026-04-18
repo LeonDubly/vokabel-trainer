@@ -5,9 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Vokabeln"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#000000"/>
-<title>Vokabeln — Nothing Edition</title>
+<meta name="format-detection" content="telephone=no"/>
+<title>Vokabeln</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' fill='%23000'/><text x='50%25' y='56%25' font-family='Space Mono,monospace' font-size='112' font-weight='700' fill='%23fff' text-anchor='middle' dominant-baseline='middle' letter-spacing='-6'>V</text><circle cx='140' cy='40' r='6' fill='%23D71921'/></svg>"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23000'/><text x='50%25' y='58%25' font-family='Space Mono,monospace' font-size='20' font-weight='700' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>V</text></svg>"/>
+<link rel="manifest" href="data:application/manifest+json;charset=utf-8,{%22name%22:%22Vokabeln%22,%22short_name%22:%22Vokabeln%22,%22start_url%22:%22/%22,%22scope%22:%22/%22,%22display%22:%22standalone%22,%22orientation%22:%22portrait%22,%22background_color%22:%22%23000000%22,%22theme_color%22:%22%23000000%22}"/>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
@@ -25,7 +30,15 @@
     --success:#4A9E5C; --warning:#D4A843;
   }
   html,body{ background:#000; margin:0; padding:0; height:100%; overscroll-behavior:none; }
-  body{ font-family:"Space Grotesk", system-ui, sans-serif; color:var(--text-primary); -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent; }
+  body{ font-family:"Space Grotesk", system-ui, sans-serif; color:var(--text-primary); -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent; touch-action:manipulation; -webkit-user-select:none; user-select:none; }
+  input, textarea, [contenteditable="true"]{ -webkit-user-select:text; user-select:text; }
+  /* Hide scrollbars everywhere — app feel */
+  *{ scrollbar-width:none; -ms-overflow-style:none; }
+  *::-webkit-scrollbar{ width:0; height:0; display:none; background:transparent; }
+  /* Mobile: lock outer scroll, let inner phone-scroll containers handle scroll — no rubber-band */
+  @media (max-width: 767px){
+    html,body{ overflow:hidden; position:fixed; inset:0; width:100%; height:100%; }
+  }
   @media (min-width: 768px){ html,body{ background:#1a1a1a; } }
   .font-display{ font-family:"Doto","Space Mono",monospace; font-variation-settings:"ROND" 100; letter-spacing:-.02em; }
   .font-mono{ font-family:"Space Mono", monospace; }
@@ -79,7 +92,7 @@
   .fach-slot.mastered{ border-color:var(--success); }
 
   .phone-scroll::-webkit-scrollbar{ display:none; }
-  .phone-scroll{ scrollbar-width:none; }
+  .phone-scroll{ scrollbar-width:none; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 
   .scan-lines{
     background-image: linear-gradient(rgba(255,255,255,.015) 50%, transparent 50%);
